@@ -1,0 +1,48 @@
+// UI walkthrough: start screen, new project, import, build a timeline, open panels, capture screenshots.
+const base = new URL('../src/js/', import.meta.url).href;
+const OUT = new URL('./out/', import.meta.url).pathname;
+const M = new URL('./media/', import.meta.url).pathname;
+const log = (...a) => console.log('[test]', ...a);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const shot = (n) => window.native.selftestCapture(OUT + n + '.png');
+try {
+  await wait(800);
+  await shot('ui-start');
+  [...document.querySelectorAll('.start button')].find((b) => b.textContent.includes('New Project')).click();
+  await wait(300);
+  const st = await import(base + 'state.js');
+  const actions = await import(base + 'actions.js');
+  const media = await actions.importPaths([M + 'test1.mp4', M + 'test2.mp4', M + 'photo.png']);
+  for (const m of media.slice(0, 2)) await actions.insertItem({ kind: 'media', id: m.id });
+  const S = st.store;
+  S.time = 2; await actions.insertItem({ kind: 'media', id: media[2].id });
+  S.time = 1; await actions.insertItem({ kind: 'title', id: 'lt-pill' });
+  S.time = 0; await actions.insertItem({ kind: 'audio-lib', id: 'm-chill' });
+  S.time = 6; await actions.insertItem({ kind: 'element', id: 'emo-heart-eyes' });
+  const clips = S.project.clips;
+  st.edit(() => { clips[1].tIn = { id: 'push-left', duration: 1 }; });
+  const img = clips.find((c) => c.type === 'image');
+  st.edit(() => { Object.assign(img.transform, { scale: 0.35, x: 0.3, y: -0.25 }); img.chroma.on = true; img.chroma.color = '#ff0000'; });
+  actions.app.player.seek(2.5);
+  st.select(img.id);
+  S.emit('inspect', 'chroma');
+  document.querySelector('.lib-tab[data-tab="title"]').click();
+  await wait(1500);
+  await shot('ui-main');
+  const vid = clips.find((c) => c.type === 'video');
+  st.select(vid.id); S.emit('inspect', 'audio');
+  document.querySelector('.lib-tab[data-tab="transition"]').click();
+  await wait(1200);
+  await shot('ui-audio');
+  document.querySelector('.lib-tab[data-tab="effect"]').click();
+  st.select(clips.find((c) => c.type === 'title').id); S.emit('inspect', 'text');
+  actions.app.player.seek(2.2);
+  await wait(1200);
+  await shot('ui-text');
+  const { openExport } = await import(base + 'ui/export.js');
+  openExport();
+  await wait(600);
+  await shot('ui-export');
+  log('ALL OK');
+} catch (e) { log('FATAL', e.stack); }
+window.native.selftestDone(0);

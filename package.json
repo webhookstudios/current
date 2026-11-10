@@ -1,0 +1,19 @@
+{
+  "name": "splice",
+  "productName": "Splice",
+  "version": "1.2.0",
+  "description": "A template-rich video editor for Ubuntu",
+  "main": "main.js",
+  "desktopName": "io.github.webhookstudios.Splice.desktop",
+  "license": "GPL-2.0-or-later",
+  "author": "webhookstudios",
+  "homepage": "https://github.com/webhookstudios/splice",
+  "scripts": {
+    "start": "electron .",
+    "test": "electron . --selftest=tests/smoke.js",
+    "deb": "./build-deb.sh"
+  },
+  "devDependencies": {
+    "electron": "45.2.3"
+  }
+}

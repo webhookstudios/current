@@ -1,0 +1,40 @@
+// Builds a good-looking project and captures README screenshots.
+const base = new URL('../src/js/', import.meta.url).href;
+const OUT = new URL('../docs/screenshots/', import.meta.url).pathname;
+const M = new URL('./media/', import.meta.url).pathname;
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+try {
+  document.querySelector('.start button.primary')?.click();
+  const st = await import(base + 'state.js');
+  const A = await import(base + 'actions.js');
+  const S = st.store;
+  S.project.name = 'Summer Trip';
+  const main = st.mainTrack();
+  const tr = st.videoTracks();
+  await A.insertItem({ kind: 'background', id: 'bg-synth' }, { trackId: main.id, time: 0 });
+  await A.insertItem({ kind: 'background', id: 'bg-aurora' }, { trackId: main.id, time: 5 });
+  await A.insertItem({ kind: 'background', id: 'bg-bokeh' }, { trackId: main.id, time: 10 });
+  const [b1, b2, b3] = S.project.clips;
+  st.edit(() => { b2.tIn = { id: 'light-leak', duration: 1.2 }; b3.tIn = { id: 'cube-left', duration: 1 }; b1.anim.loop = 'ken-burns-in'; });
+  await A.insertItem({ kind: 'title', id: 'open-retro' }, { trackId: tr[1].id, time: 0.2 });
+  await A.insertItem({ kind: 'element', id: 'emo-cool' }, { trackId: tr[0].id, time: 1 });
+  const em = S.project.clips.at(-1);
+  st.edit(() => Object.assign(em.transform, { scale: 0.45, x: 0.36, y: -0.28 }));
+  await A.insertItem({ kind: 'title', id: 'lt-pill' }, { trackId: tr[1].id, time: 6 });
+  await A.insertItem({ kind: 'audio-lib', id: 'm-synthwave' }, { time: 0 });
+  await A.insertItem({ kind: 'audio-lib', id: 'sfx-whoosh' }, { time: 4.4 });
+  const ttl = S.project.clips.find((c) => c.template === 'open-retro');
+  st.select(ttl.id); S.emit('inspect', 'text');
+  document.querySelector('.lib-tab[data-tab="title"]').click();
+  A.app.player.seek(2.2);
+  const { zoomFit } = await import(base + 'ui/timeline.js'); zoomFit();
+  await wait(1800);
+  await window.native.selftestCapture(OUT + 'editor.png');
+  document.querySelector('.lib-tab[data-tab="transition"]').click();
+  const v = S.project.clips.find((c) => c.type === 'audio' && c.name === 'Neon Drive');
+  st.select(v.id); S.emit('inspect', 'audio');
+  A.app.player.seek(6.6);
+  await wait(1500);
+  await window.native.selftestCapture(OUT + 'audio.png');
+} catch (e) { console.log('[test] FATAL', e.stack); }
+window.native.selftestDone(0);
