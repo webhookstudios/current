@@ -43,7 +43,7 @@ chmod 644 "$STAGE/usr/share/applications/$APP_ID.desktop"
 
 cat > "$STAGE/usr/share/doc/splice/copyright" <<EOT
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: Splice
+Upstream-Name: Current (formerly Splice)
 Source: https://github.com/webhookstudios/splice
 
 Files: *
@@ -55,6 +55,11 @@ License: GPL-2+
 Files: usr/lib/splice/resources/app/src/fonts/*
 License: OFL-1.1
  Fonts from Google Fonts via Fontsource, under the SIL Open Font License 1.1.
+
+Files: usr/lib/splice/resources/app/src/css/sedge/fonts/*
+Copyright: 2023 The Young Serif Project Authors; 2015 The Public Sans Project Authors
+License: OFL-1.1
+ The full license texts are in the same folder.
 
 Files: usr/lib/splice/*
 License: MIT and others
@@ -94,7 +99,7 @@ Section: video
 Priority: optional
 Homepage: https://github.com/webhookstudios/splice
 Description: Template-rich video editor
- Splice is a video editor with a library of built-in templates: animated
+ Current (formerly Splice) is a video editor with a library of built-in templates: animated
  titles and lower thirds, transitions, video effects, colour filters,
  stickers, backgrounds, sound effects and music. It layers clips on
  multiple tracks with chroma key (green and blue screen), picture in

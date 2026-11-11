@@ -28,7 +28,7 @@ async function boot() {
   const canvas = document.createElement('canvas');
   let comp;
   try { comp = new Compositor(canvas); } catch (e) {
-    document.body.innerHTML = `<div style="padding:40px;font:15px sans-serif;color:#eee">Splice needs WebGL 2, which is not available: ${e.message}</div>`;
+    document.body.innerHTML = `<div style="padding:40px;font:15px sans-serif;color:#eee">Current needs WebGL 2, which is not available: ${e.message}</div>`;
     return;
   }
   const player = new Player(comp);
@@ -70,7 +70,7 @@ function buildTopbar() {
   nameInput.addEventListener('change', () => { store.project.name = nameInput.value.trim() || 'My Video'; store.dirty = true; updateTitle(); });
   dirtyDot = h('span.dirty.hidden', { title: 'Unsaved changes' });
   bar.append(
-    h('div.brand', h('img', { src: 'img/logo.svg', alt: '' }), 'Splice'),
+    h('div.brand', h('img', { src: 'img/logo.svg', alt: '' }), 'Current'),
     menu('File', () => [
       { label: 'New project', icon: 'plus', kbd: 'Ctrl+N', run: newProjectFlow },
       { label: 'Open project…', icon: 'folder', kbd: 'Ctrl+O', run: () => openProject() },
@@ -107,7 +107,7 @@ function buildTopbar() {
     ]),
     menu('Help', () => [
       { label: 'Keyboard shortcuts', icon: 'keyboard', kbd: '?', run: showShortcuts },
-      { label: 'About Splice', icon: 'info', run: showAbout },
+      { label: 'About Current', icon: 'info', run: showAbout },
     ]),
     h('div.proj-name', dirtyDot, nameInput),
     h('div.top-right',
@@ -119,7 +119,7 @@ function buildTopbar() {
 function updateTitle() {
   nameInput.value = store.project.name;
   dirtyDot.classList.toggle('hidden', !store.dirty);
-  window.native.setTitle(`${store.dirty ? '• ' : ''}${store.project.name} – Splice`);
+  window.native.setTitle(`${store.dirty ? '• ' : ''}${store.project.name} – Current`);
 }
 
 // ---------- projects ----------
@@ -185,7 +185,7 @@ async function openProject(path) {
   if (!path) return;
   try {
     const proj = JSON.parse(await window.native.readText(path));
-    if (!proj.tracks || !proj.clips) throw new Error('This is not a Splice project.');
+    if (!proj.tracks || !proj.clips) throw new Error('This is not a Current project.');
     delete proj.app;
     const missing = [];
     for (const m of proj.media) { m.missing = !(await window.native.exists(m.path)); if (m.missing) missing.push(m.name); }
@@ -219,7 +219,7 @@ async function showStart() {
     h('button.ibtn.sm.rm', { title: 'Remove from list', onclick: async (e) => { e.stopPropagation(); await window.native.recentRemove(r.path); showStart(); } }, icon('x', 14)))) : [h('div.hint', 'Projects you save will show up here.')]);
     startEl = h('div.start',
     h('div.start-side',
-      h('div.start-logo', h('img', { src: 'img/logo.svg', alt: '' }), 'Splice'),
+      h('div.start-logo', h('img', { src: 'img/logo.svg', alt: '' }), 'Current'),
       h('div.start-tag', 'A video editor with built-in titles, transitions, effects, filters, stickers, intros, outros and music.'),
       h('div.hint', 'Aspect ratio'),
       asp,
@@ -307,7 +307,7 @@ function showShortcuts() {
 }
 async function showAbout() {
   const info = await window.native.info();
-  modal({ title: 'About Splice', body: h('div', { style: { width: '420px', lineHeight: 1.6 } }, h('div.start-logo', h('img', { src: 'img/logo.svg' }), 'Splice'), h('p', `Version ${info.version}. A template-rich video editor by webhookstudios.`), h('p.hint', 'Rendering uses WebGL; export uses GStreamer (x264, VP9, AAC, Opus, LAME). Bundled fonts are under the SIL Open Font License.')) });
+  modal({ title: 'About Current', body: h('div', { style: { width: '420px', lineHeight: 1.6 } }, h('div.start-logo', h('img', { src: 'img/logo.svg' }), 'Current'), h('p', `Version ${info.version}. A template-rich video editor by webhookstudios, formerly called Splice. Part of the Sedge family of apps.`), h('p.hint', 'Rendering uses WebGL; export uses GStreamer (x264, VP9, AAC, Opus, LAME). Bundled fonts are under the SIL Open Font License.')) });
 }
 
 function initShortcuts() {

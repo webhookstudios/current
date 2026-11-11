@@ -1,8 +1,10 @@
-# Splice
+# Current
+
+*Formerly Splice. Part of the Sedge family of webhookstudios apps.*
 
 A video editor built around ready-made templates. Drag animated titles, transitions, effects, colour filters, stickers, backgrounds, music and sound effects onto a multi-track timeline, layer clips with green screen and picture-in-picture, clean up audio, and export to MP4, MOV, WebM or MP3.
 
-![The Splice editor](docs/screenshots/editor.png)
+![The Current editor](docs/screenshots/editor.png)
 
 ## What's in the box
 
@@ -56,7 +58,7 @@ New projects start blank. The start screen also offers the 12 starter templates;
 - A GPU with WebGL 2 (any driver from the last decade)
 - GStreamer for export: `gstreamer1.0-plugins-good`, `-ugly` and `-libav` (the deb installs these)
 
-Splice has only been tested on Ubuntu 26.04.
+Current has only been tested on Ubuntu 26.04.
 
 ## Install
 
@@ -68,7 +70,7 @@ Download `splice_1.2.0_amd64.deb` from the [latest release](https://github.com/w
 sudo apt install ./splice_1.2.0_amd64.deb
 ```
 
-Open **Splice** from the apps menu. To remove it:
+Open **Current** from the apps menu. To remove it:
 
 ```bash
 sudo apt remove splice

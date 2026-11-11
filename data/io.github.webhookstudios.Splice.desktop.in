@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Splice
+Name=Current
 GenericName=Video Editor
 Comment=Edit videos with ready-made titles, transitions, effects and music
 Exec=@EXEC@ %F
@@ -8,6 +8,6 @@ Icon=@ICON@
 Terminal=false
 StartupNotify=true
 Categories=AudioVideo;Video;AudioVideoEditing;
-Keywords=video;editor;edit;movie;titles;transitions;effects;green screen;chroma;slideshow;intro;
+Keywords=splice;sedge;video;editor;edit;movie;titles;transitions;effects;green screen;chroma;slideshow;intro;
 MimeType=application/x-splice-project;
 StartupWMClass=splice

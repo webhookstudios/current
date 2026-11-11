@@ -27,7 +27,7 @@ function createWindow() {
     minWidth: 1100,
     minHeight: 700,
     backgroundColor: '#15161a',
-    title: 'Splice',
+    title: 'Current',
     icon: path.join(__dirname, 'data', 'io.github.webhookstudios.Splice.png'),
     autoHideMenuBar: true,
     webPreferences: {
@@ -103,7 +103,7 @@ ipcMain.handle('dialog:importMedia', async () => {
 ipcMain.handle('dialog:openProject', async () => {
   const r = await dialog.showOpenDialog(win, {
     title: 'Open project', properties: ['openFile'],
-    filters: [{ name: 'Splice project', extensions: ['splice'] }],
+    filters: [{ name: 'Current project', extensions: ['splice'] }],
   });
   return r.canceled ? null : r.filePaths[0];
 });
@@ -111,7 +111,7 @@ ipcMain.handle('dialog:openProject', async () => {
 ipcMain.handle('dialog:saveProject', async (_e, suggested) => {
   const r = await dialog.showSaveDialog(win, {
     title: 'Save project', defaultPath: path.join(app.getPath('videos'), (suggested || 'My Video') + '.splice'),
-    filters: [{ name: 'Splice project', extensions: ['splice'] }],
+    filters: [{ name: 'Current project', extensions: ['splice'] }],
   });
   if (r.canceled) return null;
   return r.filePath.endsWith('.splice') ? r.filePath : r.filePath + '.splice';
