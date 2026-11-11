@@ -1,16 +1,12 @@
-# Current 1.3.0
+# Current 1.3.1
 
-Current is the new name for Splice. It now has the Sedge look shared by every webhookstudios app: one set of colors, fonts and icons, in light and dark mode.
+A small cleanup release. Everything else works exactly as before.
 
-- New icon, colors and fonts. Window titles and headings use the Sedge serif.
-- The Sedge dark palette, fonts and logo throughout the editor.
-- Projects are still .splice files, and your settings and recent projects carry over.
-- The package and command are now called `current` (it was `splice`). Installing it replaces the old package.
-- Your settings and recent projects from Splice are copied over the first time Current starts.
-- Everything works exactly as before. Your settings and presets carry over.
+- The package details in app stores and `apt show` no longer mention an old name.
+- The About window is tidied up.
 
 Install:
 
 ```bash
-sudo apt install ./current_1.3.0_all.deb
+sudo apt install ./current_1.3.1_amd64.deb
 ```

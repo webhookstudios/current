@@ -43,7 +43,7 @@ chmod 644 "$STAGE/usr/share/applications/$APP_ID.desktop"
 
 cat > "$STAGE/usr/share/doc/current/copyright" <<EOT
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: Current (formerly Splice)
+Upstream-Name: Current
 Source: https://github.com/webhookstudios/current
 
 Files: *
@@ -102,7 +102,7 @@ Section: video
 Priority: optional
 Homepage: https://github.com/webhookstudios/current
 Description: Template-rich video editor
- Current (formerly Splice) is a video editor with a library of built-in templates: animated
+ Current is a video editor with a library of built-in templates: animated
  titles and lower thirds, transitions, video effects, colour filters,
  stickers, backgrounds, sound effects and music. It layers clips on
  multiple tracks with chroma key (green and blue screen), picture in
