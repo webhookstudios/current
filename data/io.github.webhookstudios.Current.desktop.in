@@ -10,4 +10,4 @@ StartupNotify=true
 Categories=AudioVideo;Video;AudioVideoEditing;
 Keywords=splice;sedge;video;editor;edit;movie;titles;transitions;effects;green screen;chroma;slideshow;intro;
 MimeType=application/x-splice-project;
-StartupWMClass=splice
+StartupWMClass=current

@@ -1,9 +1,0 @@
-# Lets Splice's bundled Chromium create its sandbox on Ubuntu 24.04 and later,
-# which restrict unprivileged user namespaces.
-abi <abi/4.0>,
-include <tunables/global>
-
-profile splice /usr/lib/splice/splice flags=(unconfined) {
-  userns,
-  include if exists <local/splice>
-}

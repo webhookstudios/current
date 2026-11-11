@@ -64,26 +64,26 @@ Current has only been tested on Ubuntu 26.04.
 
 ### With the deb package (recommended)
 
-Download `splice_1.2.0_amd64.deb` from the [latest release](https://github.com/webhookstudios/splice/releases/latest), then install it:
+Download `current_1.2.0_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
 
 ```bash
-sudo apt install ./splice_1.2.0_amd64.deb
+sudo apt install ./current_1.2.0_amd64.deb
 ```
 
 Open **Current** from the apps menu. To remove it:
 
 ```bash
-sudo apt remove splice
+sudo apt remove current
 ```
 
 ### From source
 
 ```bash
-git clone https://github.com/webhookstudios/splice.git
+git clone https://github.com/webhookstudios/current.git
 ```
 
 ```bash
-cd splice && npm install && ./install.sh
+cd current && npm install && ./install.sh
 ```
 
 Or run it straight from the checkout with `npm start`.

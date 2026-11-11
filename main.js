@@ -1,4 +1,4 @@
-// Splice: Electron main process.
+// Current: Electron main process.
 // Owns windows, native dialogs, project files, media proxies and the GStreamer export pipeline.
 'use strict';
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
@@ -7,7 +7,14 @@ const fs = require('fs');
 const os = require('os');
 const { spawn, execFile } = require('child_process');
 
-app.setName('Splice');
+app.setName('Current');
+// Current was called Splice. Its settings, cache and recent projects are copied over the first
+// time it starts; the old folder stays as it was, as a backup.
+try {
+  const oldUser = path.join(app.getPath('appData'), 'Splice');
+  if (!fs.existsSync(app.getPath('userData')) && fs.existsSync(oldUser))
+    fs.cpSync(oldUser, app.getPath('userData'), { recursive: true });
+} catch (e) { /* starting fresh is fine */ }
 // Wayland/X11 auto-detection, and a stable WM class so the dock icon matches the .desktop file.
 app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
 app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations');
@@ -28,7 +35,7 @@ function createWindow() {
     minHeight: 700,
     backgroundColor: '#15161a',
     title: 'Current',
-    icon: path.join(__dirname, 'data', 'io.github.webhookstudios.Splice.png'),
+    icon: path.join(__dirname, 'data', 'io.github.webhookstudios.Current.png'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -52,7 +59,7 @@ function createWindow() {
     if (forceClose) return;
     e.preventDefault();
     let dirty = false;
-    try { dirty = await win.webContents.executeJavaScript('window.__spliceDirty ? window.__spliceDirty() : false'); } catch { /* page gone */ }
+    try { dirty = await win.webContents.executeJavaScript('window.__currentDirty ? window.__currentDirty() : false'); } catch { /* page gone */ }
     if (dirty) {
       const r = await dialog.showMessageBox(win, {
         type: 'question', buttons: ['Discard changes', 'Cancel'], defaultId: 1, cancelId: 1,

@@ -1,4 +1,4 @@
-// Splice: the narrow bridge between the editor page and the main process.
+// Current: the narrow bridge between the editor page and the main process.
 'use strict';
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 

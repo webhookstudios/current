@@ -1,8 +1,0 @@
-#!/bin/sh
-# Launches Splice. Installed: /usr/lib/splice/splice. From a checkout: the bundled Electron in node_modules.
-HERE="$(dirname "$(readlink -f "$0")")"
-if [ -x "$HERE/../lib/splice/splice" ]; then
-    exec "$HERE/../lib/splice/splice" "$@"
-fi
-ROOT="$HERE/.."
-exec "$ROOT/node_modules/electron/dist/electron" "$ROOT" "$@"

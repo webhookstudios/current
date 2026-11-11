@@ -1,4 +1,4 @@
-// Splice: application bootstrap, top bar, menus, start screen, shortcuts and project files.
+// Current: application bootstrap, top bar, menus, start screen, shortcuts and project files.
 import { h, icon, clamp, fmtDur } from './util.js';
 import { store, newProject, undo, redo, ASPECTS, changed, select } from './state.js';
 import { Compositor } from './engine/renderer.js';
@@ -35,7 +35,7 @@ async function boot() {
   app.player = player;
   app.compositor = comp;
   app.busy = (msg) => busy(msg);
-  window.__spliceDirty = () => store.dirty;
+  window.__currentDirty = () => store.dirty;
 
   buildTopbar();
   initLibrary(document.getElementById('library'));
