@@ -19,6 +19,7 @@ const COLORS = { video: 'var(--video)', image: 'var(--image)', title: 'var(--tit
 
 let root, tabsEl, bodyEl, headEl;
 let tab = null;
+let shownTab = null; // the tab last drawn, to tell a tab switch from a redraw
 let currentKey = '';
 
 export function initInspector(el) {
@@ -29,14 +30,25 @@ export function initInspector(el) {
   root.append(headEl, tabsEl, bodyEl);
   store.on('selection', () => render(true));
   store.on('change', (k) => { if (k !== 'drag') render(false); });
-  store.on('inspect', (t) => { if (t) tab = t; render(true); });
+  store.on('inspect', (t, sec) => { if (t) tab = t; render(true); if (sec) focusSection(sec); });
   render(true);
 }
 
 // live-edit helpers: one undo step per drag
 const live = (fn) => ({ onStart: () => checkpoint(), onInput: (v) => { fn(v); changed('drag'); app.player.requestRender(); }, onChange: () => changed() });
 
-function tabsFor(c) {
+// Scroll a section of the open tab into view and highlight it for a moment (menus open a feature this way).
+function focusSection(title) {
+  const sec = [...bodyEl.querySelectorAll('.sec')].find((el) => el.querySelector('.sec-h span')?.textContent === title);
+  if (!sec) return;
+  sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  sec.classList.remove('flash');
+  void sec.offsetWidth;
+  sec.classList.add('flash');
+  setTimeout(() => sec.classList.remove('flash'), 1600);
+}
+
+export function tabsFor(c) {
   if (!c) return [];
   switch (c.type) {
     case 'video': return [['video', 'Video'], ['crop', 'Crop'], ['chroma', 'Green Screen'], ['color', 'Color'], ['effects', 'Effects'], ['anim', 'Animation'], ['speed', 'Speed'], ['audio', 'Audio']];
@@ -58,6 +70,7 @@ function render(full) {
   const f = document.activeElement;
   const typing = f && root.contains(f) && (f.tagName === 'TEXTAREA' || f.isContentEditable || (f.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'color', 'button'].includes(f.type)));
   if (!full && key === currentKey && typing) return;
+  const prevKey = currentKey;
   currentKey = key;
   const scrollTop = bodyEl.scrollTop;
   if (tr) { setCropMode(null); cancelColorPick(); return renderTransition(clipById(tr.clipId), tr.side); }
@@ -74,7 +87,9 @@ function render(full) {
   if (tab !== 'chroma' && full) cancelColorPick();
   const panel = { video: videoTab, crop: cropTab, chroma: chromaTab, color: colorTab, effects: effectsTab, anim: animTab, speed: speedTab, audio: audioTab, text: textTab, style: styleTab, adjust: adjustTab }[tab];
   bodyEl.replaceChildren(...[].concat(panel(c)));
-  if (!full) bodyEl.scrollTop = scrollTop;
+  // the same clip and tab keep their place; another clip or tab starts at the top
+  bodyEl.scrollTop = key === prevKey && tab === shownTab ? scrollTop : 0;
+  shownTab = tab;
 }
 
 // ---------- project ----------
@@ -90,7 +105,7 @@ function renderProject(n) {
       select({ label: 'Frame rate', value: String(p.fps), options: [['24', '24 fps'], ['25', '25 fps'], ['30', '30 fps'], ['50', '50 fps'], ['60', '60 fps']], onChange: (v) => edit(() => { p.fps = +v; }) }),
       colorRow({ label: 'Background', value: p.background, onStart: checkpoint, onInput: (v) => { p.background = v; changed('drag'); app.player.requestRender(); }, onChange: () => changed() }),
       h('div.hint', `${p.width} × ${p.height} · ${p.media.length} media files · ${p.clips.length} clips`)),
-    section('Getting started', h('div.hint', { html: 'Drag media, titles, transitions, effects and stickers from the left onto the timeline.<br><br>Put a clip on a track <b>above</b> another to layer it: use <b>Green Screen</b> to key out a background, or right-click it and choose <b>Picture in picture</b>.<br><br>Drop a transition between two clips on the same track. Double-click a clip to edit it here.' })),
+    section('Getting started', h('div.hint', { html: 'Drag media, titles, transitions, effects and stickers from the left onto the timeline.<br><br>Put a clip on a track <b>above</b> another to layer it: use <b>Green Screen</b> to key out a background, or right-click it and choose <b>Picture in picture</b>.<br><br>Drop a transition between two clips on the same track. Double-click a clip to edit it here. Right-click a clip, or open the <b>Clip</b> menu, for everything you can do to it.<br><br>Record a voiceover or your screen, and make captions, from the <b>Tools</b> menu or the buttons above the timeline. Set up your colours and logo in <b>Brand</b>. <b>Help › What’s new</b> shows the newest features.' })),
   );
 }
 

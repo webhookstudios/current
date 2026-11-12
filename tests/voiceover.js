@@ -14,7 +14,7 @@ const check = (ok, what) => { log(ok ? 'ok  ' : 'FAIL', what); if (!ok) bad++; }
 
 async function openDialog(viaKey) {
   if (viaKey) key('r');
-  else document.querySelector('[data-tip="Record voiceover (R)"]').click();
+  else document.querySelector('.tl-lbl[data-tip^="Record a voiceover"]').click();
   const dlg = await until(() => [...document.querySelectorAll('.modal')].find((m) => m.textContent.includes('Record a voiceover')));
   const start = dlg && [...dlg.querySelectorAll('.modal-f button')].find((b) => b.textContent.includes('Start recording'));
   await until(() => start && !start.disabled);

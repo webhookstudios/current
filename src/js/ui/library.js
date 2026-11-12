@@ -13,7 +13,7 @@ import { drawPreview, makeThumbCanvas } from './previews.js';
 import { dnd } from './dnd.js';
 import { showMenu, toast } from './widgets.js';
 
-const TABS = [
+export const TABS = [
   { id: 'media', label: 'Media', icon: 'media' },
   { id: 'audio', label: 'Audio', icon: 'audio' },
   { id: 'pack', label: 'Intro/Outro', icon: 'film' },
@@ -150,7 +150,7 @@ function card(it, used) {
     const dur = it.kind === 'audio-lib' ? it.dur : it.m.duration;
     const btn = h('button.audio-play', { title: 'Preview', onclick: (e) => { e.stopPropagation(); togglePreview(it, btn); } }, icon('play', 18));
     if (preview.id === it.id) { btn.classList.add('playing'); btn.replaceChildren(icon('pause', 18)); preview.btn = btn; }
-    thumb = h('div.thumb', icon(it.cat === 'Music' || it.kind === 'media' ? 'audio' : 'sparkle', 26), btn, h('span.badge', fmtDur(dur)));
+    thumb = h('div.thumb', icon(it.cat === 'Music' || it.kind === 'media' ? 'audio' : 'zap', 26), btn, h('span.badge', fmtDur(dur)));
   } else {
     const cv = makeThumbCanvas();
     thumb = h('div.thumb', cv);

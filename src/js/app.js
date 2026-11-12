@@ -4,7 +4,7 @@ import { store, newProject, undo, redo, ASPECTS, changed, select } from './state
 import { Compositor } from './engine/renderer.js';
 import { Player } from './engine/player.js';
 import { warm } from './engine/media.js';
-import { initLibrary, doImport, setTab, renderGrid } from './ui/library.js';
+import { initLibrary, doImport, setTab, renderGrid, TABS } from './ui/library.js';
 import { initPreview, busy } from './ui/preview.js';
 import { initTimeline, zoomFit, setZoom, render as renderTimeline } from './ui/timeline.js';
 import { initInspector } from './ui/inspector.js';
@@ -13,7 +13,8 @@ import { openVoiceover } from './ui/voiceover.js';
 import { openScreenRecord } from './ui/screenrec.js';
 import { openCaptions, openCaptionEditor } from './ui/captions.js';
 import { loadBrand } from './brand.js';
-import { brandChip, brandMenu } from './ui/brand.js';
+import { brandChip, brandMenu, openBrandKits } from './ui/brand.js';
+import { clipItems, toolsItems, selectedClip, inspect } from './ui/clipmenu.js';
 import { PROJECT_TEMPLATES } from './templates/projects.js';
 import { packById } from './templates/packs.js';
 import { drawPreview, makeThumbCanvas } from './ui/previews.js';
@@ -96,27 +97,30 @@ function buildTopbar() {
       { label: 'Copy', icon: 'copy', kbd: 'Ctrl+C', run: copySelected },
       { label: 'Paste', kbd: 'Ctrl+V', run: paste },
       { label: 'Duplicate', kbd: 'Ctrl+D', run: duplicateSelected },
+      { label: 'Select all', kbd: 'Ctrl+A', run: selectAll },
+      '-',
       { label: 'Delete', icon: 'trash', kbd: 'Del', run: () => deleteSelected(false) },
       { label: 'Ripple delete', kbd: 'Shift+Del', run: () => deleteSelected(true) },
-      '-',
-      { label: 'Split at playhead', icon: 'split', kbd: 'Ctrl+B', run: splitAtPlayhead },
-      { label: 'Freeze frame', icon: 'freeze', run: freezeFrame },
-      { label: 'Detach audio', icon: 'detach', run: detachAudio },
-      { label: 'Record voiceover…', icon: 'mic', kbd: 'R', run: openVoiceover },
-      { label: 'Record screen…', icon: 'screen', kbd: 'Shift+R', run: openScreenRecord },
-      { label: 'Generate captions…', icon: 'cc', run: openCaptions },
-      { label: 'Edit captions…', icon: 'text', run: openCaptionEditor },
-      { label: 'Select all', kbd: 'Ctrl+A', run: selectAll },
     ]),
+    menu('Clip', () => {
+      const c = selectedClip();
+      return [
+        ...(c ? [] : [{ label: 'Select a clip on the timeline to change it', icon: 'info', disabled: true }, '-']),
+        { label: 'Split at playhead', icon: 'split', kbd: 'Ctrl+B', run: splitAtPlayhead },
+        ...clipItems(c),
+      ];
+    }),
+    menu('Tools', toolsItems),
     menu('View', () => [
       { label: 'Zoom in', icon: 'zoomIn', kbd: '+', run: () => setZoom(store.zoom * 1.4) },
       { label: 'Zoom out', icon: 'zoomOut', kbd: '−', run: () => setZoom(store.zoom / 1.4) },
       { label: 'Fit timeline', icon: 'fit', kbd: 'Shift+Z', run: zoomFit },
       '-',
-      ...[['media', 'Media'], ['audio', 'Audio'], ['title', 'Titles'], ['transition', 'Transitions'], ['effect', 'Effects'], ['filter', 'Filters'], ['element', 'Stickers']].map(([id, n], i) => ({ label: n, kbd: `Alt+${i + 1}`, run: () => setTab(id) })),
+      ...TABS.map((t, i) => ({ label: t.label, icon: t.icon, kbd: `Alt+${i + 1}`, run: () => setTab(t.id) })),
     ]),
     menu('Brand', brandMenu),
     menu('Help', () => [
+      { label: 'What’s new in Current 1.4', icon: 'news', run: () => showWhatsNew() },
       { label: 'Keyboard shortcuts', icon: 'keyboard', kbd: '?', run: showShortcuts },
       { label: 'About Current', icon: 'info', run: showAbout },
     ]),
@@ -232,12 +236,13 @@ async function showStart() {
     startEl = h('div.start',
     h('div.start-side',
       h('div.start-logo', h('img', { src: 'img/logo.svg', alt: '' }), 'Current'),
-      h('div.start-tag', 'A video editor with built-in titles, transitions, effects, filters, stickers, intros, outros and music.'),
+      h('div.start-tag', 'A video editor with screen and voiceover recording, automatic captions, and built-in titles, transitions, effects, filters, stickers, intros, outros and music.'),
       h('div.hint', 'Aspect ratio'),
       asp,
       h('button.btn.primary.big', { onclick: () => { const ok = !store.dirty || !store.project.clips.length; if (!ok && !confirm('Discard the current project?')) return; loadProject(newProject({ aspect }), null); closeStart(); } }, icon('plus', 18), 'New Project'),
       h('button.btn.big', { onclick: () => openProject() }, icon('folder', 18), 'Open Project'),
       store.project.clips.length ? h('button.btn.ghost', { onclick: closeStart }, 'Back to current project') : null,
+      h('button.btn.ghost.start-news', { onclick: () => showWhatsNew() }, icon('news', 16), 'What’s new in 1.4'),
     ),
     h('div.start-main',
       h('h2', 'Recent projects'),
@@ -308,15 +313,42 @@ function initSplitters() {
 
 // ---------- keyboard ----------
 const SHORTCUTS = [
-  ['Space', 'Play / pause'], ['← / →', 'Previous / next frame (Shift: 1 second)'], ['Home / End', 'Go to start / end'], ['J / K / L', 'Back 5 s / pause / forward 5 s'],
-  ['Ctrl+B', 'Split at playhead'], ['Delete', 'Delete selection'], ['Shift+Delete', 'Ripple delete'], ['Ctrl+D', 'Duplicate'],
-  ['Ctrl+C / X / V', 'Copy / cut / paste'], ['Ctrl+A', 'Select all'], ['Ctrl+Z', 'Undo'], ['Ctrl+Shift+Z / Ctrl+Y', 'Redo'],
-  ['+ / −', 'Zoom timeline'], ['Shift+Z', 'Fit timeline'], ['N', 'Toggle snapping'], [', / .', 'Nudge selected clips by a frame'],
-  ['R', 'Record a voiceover at the playhead'], ['Shift+R', 'Record the screen, with a webcam bubble'],
-  ['Ctrl+S', 'Save'], ['Ctrl+O', 'Open'], ['Ctrl+I', 'Import media'], ['Ctrl+E', 'Export'], ['Alt+1…7', 'Library tabs'],
+  ['Playback', [['Space', 'Play / pause'], ['← / →', 'Previous / next frame (Shift: 1 second)'], ['Home / End', 'Go to start / end'], ['J / K / L', 'Back 5 s / pause / forward 5 s']]],
+  ['Editing', [['Ctrl+B', 'Split at playhead'], ['Delete', 'Delete selection'], ['Shift+Delete', 'Ripple delete'], ['Ctrl+D', 'Duplicate'],
+    ['Ctrl+C / X / V', 'Copy / cut / paste'], ['Ctrl+A', 'Select all'], ['Ctrl+Z', 'Undo'], ['Ctrl+Shift+Z / Ctrl+Y', 'Redo'], [', / .', 'Nudge selected clips by a frame']]],
+  ['Timeline', [['+ / −', 'Zoom timeline'], ['Shift+Z', 'Fit timeline'], ['N', 'Toggle snapping']]],
+  ['Recording', [['R', 'Record a voiceover at the playhead'], ['Shift+R', 'Record the screen, with a webcam bubble']]],
+  ['Files and panels', [['Ctrl+N', 'New project'], ['Ctrl+O', 'Open'], ['Ctrl+S', 'Save'], ['Ctrl+Shift+S', 'Save as'], ['Ctrl+I', 'Import media'], ['Ctrl+E', 'Export'],
+    [`Alt+1…${TABS.length}`, `Library tabs (${TABS.map((t) => t.label).join(', ')})`], ['?', 'This list']]],
 ];
 function showShortcuts() {
-  modal({ title: 'Keyboard shortcuts', body: h('div.kbd-list', SHORTCUTS.flatMap(([k, d]) => [h('span', k.split(' / ').map((x, i) => [i ? ' / ' : '', h('kbd', x)])), h('span', d)])) });
+  modal({ title: 'Keyboard shortcuts', body: h('div.kbd-list', SHORTCUTS.flatMap(([group, rows]) => [h('div.kbd-group', group),
+    ...rows.flatMap(([k, d]) => [h('span', k.split(' / ').map((x, i) => [i ? ' / ' : '', h('kbd', x)])), h('span', d)])])) });
+}
+
+// Every 1.4 feature, where to find it, and a button that opens it where that makes sense.
+function showWhatsNew() {
+  const c = selectedClip();
+  const sound = c && (c.type === 'audio' || c.type === 'video');
+  const rows = [
+    ['mic', 'Record a voiceover', 'Tools › Record voiceover, the Voiceover button above the timeline, or press R. Recording starts at the playhead after a short countdown.', openVoiceover],
+    ['screen', 'Record your screen', 'Tools › Record screen, the Screen button, or Shift+R. Add a round webcam bubble and your microphone.', openScreenRecord],
+    ['cc', 'Automatic captions', 'Tools › Generate captions, or the Captions button. Made on this computer; edit any line in Tools › Edit captions.', openCaptions],
+    ['brand', 'Brand kits', 'The Brand menu, or the Brand button at the top right. Save your colours, font and logo, keep several, or switch branding off.', openBrandKits],
+    ['film', 'Professional intros, outros and lower thirds', 'The Intro/Outro tab on the left, and Titles › Professional.', () => setTab('pack')],
+    ['volume', 'Auto-ducking', 'Music dips under voices by itself. Choose Voice, Music or Sound effect in a clip’s Audio tab, under Clip type.', sound ? () => inspect('audio', 'Clip type') : null],
+    ['pauses', 'Remove pauses', 'Clip › Remove pauses, or right-click a clip with sound.', sound ? () => inspect('audio', 'Remove pauses') : null],
+    ['zoomArea', 'Zoom to area', 'Clip › Zoom to area, then drag a box over the preview.', c && (c.type === 'video' || c.type === 'image') ? () => inspect('video', 'Zoom to area') : null],
+    ['shape', 'Shapes and outline', 'Clip › Shape and outline: show a video or photo as a rounded rectangle or a circle.', c && (c.type === 'video' || c.type === 'image') ? () => inspect('video', 'Shape') : null],
+  ];
+  const dlg = modal({
+    title: 'What’s new in Current 1.4',
+    body: h('div.news', rows.map(([ic, name, where, run]) => h('div.news-row',
+      h('span.ic', icon(ic, 18)),
+      h('div', h('b', name), h('div.where', where)),
+      run && !startEl ? h('button.btn.small', { onclick: () => { dlg.close(); run(); } }, 'Open') : h('span')))),
+    actions: [{ label: 'Close', primary: true, run: (close) => close() }],
+  });
 }
 async function showAbout() {
   const info = await window.native.info();
@@ -339,7 +371,7 @@ function initShortcuts() {
     const p = app.player;
     const fps = store.project.fps || 30;
     if (startEl) return;
-    if (e.altKey && /^[1-7]$/.test(k)) { setTab(['media', 'audio', 'title', 'transition', 'effect', 'filter', 'element'][+k - 1]); e.preventDefault(); return; }
+    if (e.altKey && /^[1-9]$/.test(k) && TABS[+k - 1]) { setTab(TABS[+k - 1].id); e.preventDefault(); return; }
     switch (true) {
       case k === ' ': e.preventDefault(); p.toggle(); break;
       case k === 'ArrowLeft': e.preventDefault(); p.seek(store.time - (e.shiftKey ? 1 : 1 / fps)); break;

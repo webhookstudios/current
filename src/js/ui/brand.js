@@ -11,7 +11,7 @@ export function brandChip() {
   const chip = h('button.btn.brand-chip', { onclick: (e) => { const r = chip.getBoundingClientRect(); import('./widgets.js').then((w) => w.showMenu(r.left, r.bottom + 4, brandMenu())); } });
   const paint = () => {
     const k = activeKit();
-    chip.replaceChildren(k ? h('span.dots', [k.colors.primary, k.colors.secondary, k.colors.accent].map((c) => h('i', { style: { background: c } }))) : icon('sparkle', 14), k ? k.name : 'Brand off');
+    chip.replaceChildren(k ? h('span.dots', [k.colors.primary, k.colors.secondary, k.colors.accent].map((c) => h('i', { style: { background: c } }))) : icon('brand', 14), k ? k.name : 'Brand off');
     chip.title = k ? `Brand kit “${k.name}” is on: new titles, stickers and intros use its colors and font` : 'No brand kit: titles, stickers and intros keep their own look';
     chip.classList.toggle('on', !!k);
   };
@@ -21,7 +21,7 @@ export function brandChip() {
 }
 
 export function brandMenu() {
-  const items = [{ label: 'Brand kits…', icon: 'sparkle', run: openBrandKits }, '-'];
+  const items = [{ label: 'Brand kits…', icon: 'brand', run: openBrandKits }, '-'];
   items.push({ label: 'Off', icon: !activeKit() ? 'check' : null, run: () => { brand.enabled = false; saveBrand(); toast('Brand kit off. New clips keep their own look.'); } });
   for (const k of brand.kits) items.push({ label: k.name, icon: activeKit()?.id === k.id ? 'check' : null, run: () => useKit(k) });
   if (activeKit()) {

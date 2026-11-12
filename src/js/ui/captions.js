@@ -221,7 +221,7 @@ async function generate(o, clip, voices) {
       select([]);
     });
     app.player.seek(store.time);
-    toast(`${made.length} captions added on the Captions track. Edit them in Edit › Edit captions, or select one to change it.`, '', 7000);
+    toast(`${made.length} captions added on the Captions track. Edit them in Tools › Edit captions, or select one to change it.`, '', 7000);
   } catch (e) {
     if (!cancelled) { m.close(); toast(`Captions could not be made: ${e.message}`, 'err', 8000); }
   } finally { off(); }

@@ -45,10 +45,10 @@ New projects start blank. The start screen also offers the 12 starter templates;
 
 ## Recording and captions
 
-- **Record your screen** (<kbd>Shift</kbd>+<kbd>R</kbd>, or the screen button above the timeline). Your desktop asks which screen or window to share. Add a webcam and it lands as a round, outlined bubble in the bottom-right corner; your microphone goes on its own audio track, marked as Voice. Current can hide itself while you record; stop from its floating panel, with Space, or with the stop button your desktop shows in the top bar. Recordings are saved in `~/Videos/Current recordings`.
-- **Automatic captions** (Edit › Generate captions, or the CC button). Speech is turned into captions on this computer with whisper.cpp, in 17 languages or detected automatically; nothing is uploaded. The speech model (60 MB, or 190 MB for the most accurate one) downloads once and is checked against its published checksum. Each caption appears as its words are spoken: word times come from whisper's alignment and are matched to the sound, so captions leave during pauses. Long sentences are split into even parts, so no word is left on its own. Captions use any subtitle style (Word Highlight lights up each word as it is spoken), and sit on their own Captions track.
+- **Record your screen** (Tools › Record screen, <kbd>Shift</kbd>+<kbd>R</kbd>, or the **Screen** button above the timeline). Your desktop asks which screen or window to share. Add a webcam and it lands as a round, outlined bubble in the bottom-right corner; your microphone goes on its own audio track, marked as Voice. Current can hide itself while you record; stop from its floating panel, with Space, or with the stop button your desktop shows in the top bar. Recordings are saved in `~/Videos/Current recordings`.
+- **Automatic captions** (Tools › Generate captions, or the **Captions** button above the timeline). Speech is turned into captions on this computer with whisper.cpp, in 17 languages or detected automatically; nothing is uploaded. The speech model (60 MB, or 190 MB for the most accurate one) downloads once and is checked against its published checksum. Each caption appears as its words are spoken: word times come from whisper's alignment and are matched to the sound, so captions leave during pauses. Long sentences are split into even parts, so no word is left on its own. Captions use any subtitle style (Word Highlight lights up each word as it is spoken), and sit on their own Captions track.
 - **Edit captions** fixes wording line by line, deletes lines and changes the style of all of them. Each caption is also a normal title you can move, retime or restyle.
-- **Show captions** always on screen (burned in), as an `.srt` caption file saved next to the exported video for viewers to turn on, or both.
+- **Show captions** always on screen (burned in), as an `.srt` caption file saved next to the exported video for viewers to turn on, or both. Choose in the Tools menu, the captions window or Export.
 
 ## Brand kits
 
@@ -80,10 +80,10 @@ Current has only been tested on Ubuntu 26.04.
 
 ### With the deb package (recommended)
 
-Download `current_1.4.0_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
+Download `current_1.4.1_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
 
 ```bash
-sudo apt install ./current_1.4.0_amd64.deb
+sudo apt install ./current_1.4.1_amd64.deb
 ```
 
 Open **Current** from the apps menu. To remove it:
@@ -113,20 +113,20 @@ Or run it straight from the checkout with `npm start`.
 | Add a template | Drag it to a track, or hover and click **+** |
 | Add a transition | Drop it on the cut between two clips (or on a clip's start or end to fade from or to black) |
 | Apply an effect or filter to one clip | Drop it on the clip |
-| Edit a clip | Select it and use the panel on the right |
+| Edit a clip | Select it and use the panel on the right, or right-click it (or open the **Clip** menu) for everything you can do to it |
 | Crop a clip | Select it, open **Crop**, and drag the handles in the preview |
 | Key out a green screen | Put the clip on a track above the background, crop off anything the screen does not cover, then **Green Screen → Remove background colour** |
 | Add an intro or outro | Open **Intro/Outro** and click **+** (intros go first, outros go last) |
-| Record a voiceover | Put the playhead where it should start, press **R**, pick your microphone, then **Start recording**. Press **Stop recording** or Space when you're done |
-| Record your screen | Press **Shift+R**, choose a webcam and microphone, press **Start recording**, then pick the screen or window |
-| Add captions | **Edit › Generate captions**, choose the language and style, and how to show them; fix any line in **Edit › Edit captions** |
+| Record a voiceover | Put the playhead where it should start, press **R** (or **Tools › Record voiceover**, or the **Voiceover** button), pick your microphone, then **Start recording**. Press **Stop recording** or Space when you're done |
+| Record your screen | Press **Shift+R** (or **Tools › Record screen**), choose a webcam and microphone, press **Start recording**, then pick the screen or window |
+| Add captions | **Tools › Generate captions**, choose the language and style, and how to show them; fix any line in **Tools › Edit captions** |
 | Use your brand | **Brand › Brand kits…**, make a kit, and switch it on |
-| Zoom into part of a clip | Select it, **Video › Zoom to area › Add zoom at playhead**, and drag a box over the preview |
-| Tighten a voiceover | Select it, **Audio › Remove pauses…** |
+| Zoom into part of a clip | Select it, **Clip › Zoom to area…**, **Add zoom at playhead**, and drag a box over the preview |
+| Tighten a voiceover | Select it, **Clip › Remove pauses…** |
 | Clean up a voice | Select the clip, **Audio → Noise removal**, then try **Voice Enhance** |
 | Export | Click **Export**, pick a format, resolution, frame rate and quality |
 
-Press **?** in the app for all keyboard shortcuts.
+Press **?** in the app for all keyboard shortcuts, and see **Help › What’s new** for the newest features and where to find them.
 
 ## Building the package
 
@@ -150,7 +150,7 @@ The package is written to `dist/`. It bundles Electron, so it is about 95 MB.
 npx electron . --selftest=tests/smoke.js
 ```
 
-Further tests: `tests/brand.js`, `tests/audio-tools.js` (ducking and Remove pauses, measured on generated sound), `tests/zoom-shape.js`, `tests/pro-packs.js` and `tests/pro-ui.js`. Screen recording and captions use simulated devices and a ready-made transcript:
+Further tests: `tests/navigation.js` (menus, toolbar and right-click items), `tests/brand.js`, `tests/audio-tools.js` (ducking and Remove pauses, measured on generated sound), `tests/zoom-shape.js`, `tests/pro-packs.js` and `tests/pro-ui.js`. Screen recording and captions use simulated devices and a ready-made transcript:
 
 ```bash
 CURRENT_RECORDING_DIR=tests/out/recordings npx electron . --selftest=tests/screenrec.js --use-fake-device-for-media-stream

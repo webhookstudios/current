@@ -432,3 +432,21 @@ kbd { background: var(--bg4); border: 1px solid var(--line2); border-bottom-widt
 .cap-time { font-variant-numeric: tabular-nums; width: 92px; justify-content: flex-start; }
 .cap-row input { flex: 1; min-width: 0; }
 .cap-time { width: 70px; }
+
+/* labelled tools in the timeline toolbar (recording and captions) */
+.tl-lbl { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 8px; margin: 0 2px; border-radius: 6px; border: 1px solid var(--line2); background: var(--bg2); color: var(--fg); font-size: 12px; cursor: pointer; white-space: nowrap; position: relative; }
+.tl-lbl:hover { background: var(--bg4); }
+.tl-lbl svg { color: var(--fg2); }
+@media (max-width: 1320px) { .tl-lbl span { display: none; } .tl-lbl { padding: 0 6px; } }
+/* a section the menus jumped to */
+.sec.flash { animation: sec-flash 1.6s ease-out; border-radius: 8px; }
+@keyframes sec-flash { 0%, 30% { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 16%, transparent); } 100% { background: transparent; box-shadow: 0 0 0 8px transparent; } }
+/* What's new */
+.news { display: grid; gap: 4px; width: 640px; max-height: 64vh; overflow: auto; }
+.news-row { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; padding: 10px 8px; border-radius: 8px; }
+.news-row:hover { background: var(--bg3); }
+.news-row .ic { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; background: var(--bg3); color: var(--accent); }
+.news-row b { display: block; font-weight: 600; margin-bottom: 2px; }
+.news-row .where { color: var(--fg3); font-size: 12px; line-height: 1.45; }
+.kbd-group { grid-column: 1 / -1; margin: 10px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg3); }
+.kbd-group:first-child { margin-top: 0; }

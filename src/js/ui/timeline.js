@@ -1,7 +1,7 @@
 // Timeline: tracks, clips, trimming, moving, snapping, transitions and drops from the library.
 import { h, icon, clamp, fmtTime, EPS } from '../util.js';
 import {
-  store, select, selectTransition, trackClips, clipEnd, clipById, trackById, mediaById, checkpoint, changed, edit, snapTime,
+  store, select, selectedClips, selectTransition, trackClips, clipEnd, clipById, trackById, mediaById, checkpoint, changed, edit, snapTime,
   clearRange, maxDuration, projectDuration, deleteTrack, ensureTrack, VISUAL, prevAdjacent, nextAdjacent, undo, redo,
 } from '../state.js';
 import { app, insertItem, applyLookToClip, setTransition, splitAtPlayhead, deleteSelected, duplicateSelected, freezeFrame, detachAudio, copySelected, paste, importPaths } from '../actions.js';
@@ -12,13 +12,17 @@ import { transitionById } from '../templates/transitions.js';
 import { showMenu, toast } from './widgets.js';
 import { openVoiceover } from './voiceover.js';
 import { openScreenRecord } from './screenrec.js';
-import { openCaptions, openCaptionEditor } from './captions.js';
+import { openCaptions, openCaptionEditor, captionClips } from './captions.js';
+import { clipItems, inspect } from './clipmenu.js';
+import { tabsFor } from './inspector.js';
 
 const TRACK_H = { video: 62, audio: 50 };
 const RULER_H = 30;
 const NEW_H = 22;
 
 let root, scroll, content, ruler, rulerCv, headsInner, playheadEl, tracksEl, zoomRange, snapBtn, undoBtn, redoBtn;
+const selTools = []; // [button, applies()]
+const updateTools = () => selTools.forEach(([b, ok]) => { b.disabled = !ok(); });
 let layout = []; // [{ track, y, h }]
 const ui = { drag: null, ghost: null, cutHint: null, snapLine: null };
 
@@ -29,20 +33,29 @@ export function initTimeline(el) {
   redoBtn = tb('redo', 'Redo (Ctrl+Shift+Z)', redo);
   snapBtn = tb('magnet', 'Snapping (N)', () => { store.snap = !store.snap; snapBtn.classList.toggle('on', store.snap); }, '.on');
   zoomRange = h('input', { type: 'range', min: 0, max: 100, value: zoomToSlider(store.zoom), oninput: () => setZoom(sliderToZoom(+zoomRange.value)) });
+  // Buttons that act on the selection are greyed out until a clip they apply to is selected.
+  const one = () => { const s = selectedClips(); return s.length === 1 ? s[0] : null; };
+  const has = (t) => () => { const c = one(); return !!c && tabsFor(c).some(([id]) => id === t); };
+  const forSel = (b, test) => { selTools.push([b, test]); return b; };
+  // The newer tools carry a label, so they can be found without hovering.
+  const lbl = (name, label, tip, fn) => h('button.tl-lbl', { 'data-tip': tip, onclick: fn }, icon(name, 16), h('span', label));
   const toolbar = h('div.tl-toolbar',
     undoBtn, redoBtn, h('div.sep'),
     tb('split', 'Split at playhead (Ctrl+B)', splitAtPlayhead),
-    tb('trash', 'Delete (Del)', () => deleteSelected(false)),
-    tb('copy', 'Duplicate (Ctrl+D)', duplicateSelected),
-    tb('crop', 'Crop', () => store.emit('inspect', 'crop')),
-    tb('speed', 'Speed', () => store.emit('inspect', 'speed')),
-    tb('freeze', 'Freeze frame', freezeFrame),
-    tb('detach', 'Detach audio', detachAudio),
-    tb('volume', 'Audio settings', () => store.emit('inspect', 'audio')),
-    tb('mic', 'Record voiceover (R)', openVoiceover),
-    tb('screen', 'Record screen (Shift+R)', openScreenRecord),
-    tb('cc', 'Captions', () => (store.project.clips.some((c) => c.caption) ? openCaptionEditor() : openCaptions())),
-    tb('color', 'Color', () => store.emit('inspect', 'color')),
+    forSel(tb('trash', 'Delete (Del)', () => deleteSelected(false)), () => store.selection.size > 0),
+    forSel(tb('copy', 'Duplicate (Ctrl+D)', duplicateSelected), () => store.selection.size > 0),
+    h('div.sep'),
+    tb('freeze', 'Freeze frame: hold the picture at the playhead', freezeFrame),
+    forSel(tb('detach', 'Detach audio onto its own track', detachAudio), () => selectedClips().some((c) => c.type === 'video' && !c.muted)),
+    h('div.sep'),
+    forSel(tb('crop', 'Crop', () => inspect('crop')), has('crop')),
+    forSel(tb('speed', 'Speed', () => inspect('speed')), has('speed')),
+    forSel(tb('color', 'Color', () => inspect('color')), has('color')),
+    forSel(tb('volume', 'Audio settings', () => inspect('audio')), has('audio')),
+    h('div.sep'),
+    lbl('mic', 'Voiceover', 'Record a voiceover at the playhead (R)', openVoiceover),
+    lbl('screen', 'Screen', 'Record your screen, with a webcam bubble (Shift+R)', openScreenRecord),
+    lbl('cc', 'Captions', 'Make captions from speech, or edit them', () => (captionClips().length ? openCaptionEditor() : openCaptions())),
     h('div.sep'), snapBtn,
     h('div.sp'),
     h('span.hint', { id: 'tl-dur' }),
@@ -74,7 +87,7 @@ export function initTimeline(el) {
   new ResizeObserver(() => { render(); }).observe(scroll);
 
   store.on('change', () => render());
-  store.on('selection', () => paintSelection());
+  store.on('selection', () => { paintSelection(); updateTools(); });
   store.on('time', () => placePlayhead(true));
   store.on('strip', () => repaintStrips());
   store.on('waveform', () => repaintStrips());
@@ -123,6 +136,7 @@ export function render() {
   content.style.width = width + 'px';
   undoBtn.disabled = !store.undoStack.length;
   redoBtn.disabled = !store.redoStack.length;
+  updateTools();
   document.getElementById('tl-dur').textContent = `Duration ${fmtTime(dur, p.fps)}`;
 
   layout = [];
@@ -306,8 +320,10 @@ function drawRuler() {
   ctx.stroke();
 }
 const fmtRuler = (t, major) => {
+  t = Math.round(t * 1000) / 1000;
   const m = Math.floor(t / 60), s = t - m * 60;
-  if (major < 1) { const f = Math.round((s % 1) * (store.project.fps || 30)); return `${m}:${String(Math.floor(s)).padStart(2, '0')}:${String(f).padStart(2, '0')}`; }
+  // under a second apart: seconds with decimals (00:01.5), never minutes:seconds:frames, which reads as h:mm:ss
+  if (major < 1 && Math.abs(s - Math.round(s)) > 1e-4) { const d = major >= 0.5 ? 1 : 2; return `${String(m).padStart(2, '0')}:${s.toFixed(d).padStart(3 + d, '0')}`; }
   return `${String(m).padStart(2, '0')}:${String(Math.round(s)).padStart(2, '0')}`;
 };
 
@@ -478,33 +494,14 @@ function onContext(e) {
     { label: 'Duplicate', icon: 'copy', kbd: 'Ctrl+D', run: duplicateSelected },
     { label: 'Copy', icon: 'copy', kbd: 'Ctrl+C', run: copySelected },
     '-',
-    { label: c.muted ? 'Unmute' : 'Mute', icon: c.muted ? 'volume' : 'mute', disabled: !isAv, run: () => edit(() => { c.muted = !c.muted; }) },
-    { label: 'Detach audio', icon: 'detach', disabled: c.type !== 'video', run: detachAudio },
-    { label: 'Freeze frame', icon: 'freeze', disabled: c.type !== 'video', run: freezeFrame },
-    { label: 'Audio settings', icon: 'volume', disabled: !isAv, run: () => store.emit('inspect', 'audio') },
-    { label: 'Crop', icon: 'crop', disabled: !(c.type === 'video' || c.type === 'image'), run: () => store.emit('inspect', 'crop') },
-    { label: 'Green screen / Chroma key', icon: 'wand', disabled: !(c.type === 'video' || c.type === 'image'), run: () => store.emit('inspect', 'chroma') },
-    { label: 'Picture in picture', icon: 'layers', disabled: !(c.type === 'video' || c.type === 'image'), run: () => makePip(c) },
+    ...(isAv ? [{ label: c.muted ? 'Unmute' : 'Mute', icon: c.muted ? 'volume' : 'mute', run: () => edit(() => { c.muted = !c.muted; }) }] : []),
+    ...clipItems(c, { hide: true }),
     '-',
     { label: 'Delete', icon: 'trash', kbd: 'Del', run: () => deleteSelected(false) },
     { label: 'Ripple delete', icon: 'trash', kbd: 'Shift+Del', run: () => deleteSelected(true) },
   ]);
 }
 
-// Shrink a clip into a corner over the track below (and move it up a track if it is on the main track).
-function makePip(c) {
-  edit(() => {
-    const vids = store.project.tracks.filter((t) => t.kind === 'video');
-    const i = vids.indexOf(trackById(c.trackId));
-    if (trackById(c.trackId).main || i === vids.length - 1) {
-      let up = vids[i - 1];
-      if (!up || trackClips(up.id).some((o) => o.start < clipEnd(c) && clipEnd(o) > c.start)) up = ensureTrack('video', 'top');
-      c.trackId = up.id;
-    }
-    Object.assign(c.transform, { scale: 0.35, x: 0.3, y: 0.28 });
-  });
-  toast('Picture in picture: drag it in the preview to place it');
-}
 
 // ---------- drag & drop from library / files ----------
 function clearDropUi() {
