@@ -1,0 +1,161 @@
+{
+ "systeminfo": "fixture",
+ "model": {},
+ "params": {},
+ "result": {
+  "language": "en"
+ },
+ "transcription": [
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 300,
+    "to": 740
+   },
+   "text": " Welcome"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 800,
+    "to": 1200
+   },
+   "text": " to"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 1260,
+    "to": 1700
+   },
+   "text": " the"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 1760,
+    "to": 2200
+   },
+   "text": " lesson."
+  },
+  {
+   "offsets": {
+    "from": 1600,
+    "to": 1700
+   },
+   "text": " [BLANK_AUDIO]"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 3100,
+    "to": 3460
+   },
+   "text": " Today"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 3520,
+    "to": 3920
+   },
+   "text": " we"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 3980,
+    "to": 4300
+   },
+   "text": " open"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 4360,
+    "to": 4720
+   },
+   "text": " a"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 4780,
+    "to": 5220
+   },
+   "text": " new"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 5280,
+    "to": 5600
+   },
+   "text": " workbook"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 5660,
+    "to": 6100
+   },
+   "text": " and"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 6160,
+    "to": 6520
+   },
+   "text": " enter"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 6580,
+    "to": 6900
+   },
+   "text": " some"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 6960,
+    "to": 7320
+   },
+   "text": " data."
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 8220,
+    "to": 8540
+   },
+   "text": " Then"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 8600,
+    "to": 9000
+   },
+   "text": " we"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 9060,
+    "to": 9380
+   },
+   "text": " save"
+  },
+  {
+   "timestamps": {},
+   "offsets": {
+    "from": 9440,
+    "to": 9880
+   },
+   "text": " it."
+  }
+ ]
+}

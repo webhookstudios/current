@@ -77,6 +77,7 @@ export function makeClip(type, o = {}) {
     c.crop = { l: 0, t: 0, r: 0, b: 0 };
     c.chroma = { on: false, color: '#00ff00', similarity: 0.15, smooth: 0.08, spill: 0.5 };
   }
+  if (type === 'audio') c.duck = { on: true, amount: 12 }; // only acts when the clip is music
   if (AUDIBLE.has(type)) Object.assign(c, { volume: 1, fadeIn: 0, fadeOut: 0, muted: false, audioFx: { preset: 'none', mix: 1, low: 0, mid: 0, high: 0, lowCut: false, compress: false, denoise: 0, denoisePath: null } });
   if (type === 'title' || type === 'element' || type === 'background') {
     c.template = o.template;

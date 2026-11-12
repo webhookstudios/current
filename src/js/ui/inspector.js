@@ -1,5 +1,5 @@
 // Right panel: properties of the selected clip, transition, or the project.
-import { h, icon, fmtDur, clamp } from '../util.js';
+import { h, icon, fmtDur, clamp, FONTS } from '../util.js';
 import { store, selectedClips, clipById, checkpoint, changed, edit, mediaById, clampClip, ASPECTS, defaultColor, defaultTransform, prevAdjacent } from '../state.js';
 import { app, setSpeed, detachAudio } from '../actions.js';
 import { titleById } from '../templates/titles.js';
@@ -10,10 +10,11 @@ import { ANIM_IN, ANIM_OUT, ANIM_LOOP } from '../templates/anims.js';
 import { AUDIO_PRESETS, denoiseSource, decodeFile, normalizeGain } from '../engine/audio.js';
 import { BLEND_MODES } from '../engine/renderer.js';
 import { loadPeaks, playPath } from '../engine/media.js';
-import { setCropMode, startColorPick, cancelColorPick, isPicking } from './preview.js';
+import { setCropMode, startColorPick, cancelColorPick, isPicking, startAreaPick } from './preview.js';
 import { slider, select, toggle, colorRow, section, toast } from './widgets.js';
+import { ROLES, roleOf } from '../engine/duck.js';
+import { openRemovePauses } from './silence.js';
 
-const FONTS = ['Montserrat', 'Poppins', 'Inter', 'Oswald', 'Bebas Neue', 'Anton', 'Archivo Black', 'Playfair Display', 'Abril Fatface', 'Lobster', 'Pacifico', 'Dancing Script', 'Great Vibes', 'Caveat', 'Permanent Marker', 'Bangers', 'Righteous', 'Orbitron', 'Monoton', 'Press Start 2P', 'Rubik Mono One', 'Space Grotesk', 'Noto Sans', 'DejaVu Serif', 'Liberation Mono'];
 const COLORS = { video: 'var(--video)', image: 'var(--image)', title: 'var(--title)', element: 'var(--element)', background: 'var(--background)', adjust: 'var(--adjust)', audio: 'var(--audio)' };
 
 let root, tabsEl, bodyEl, headEl;
@@ -52,7 +53,11 @@ function render(full) {
   const sel = selectedClips();
   const tr = store.selectedTransition;
   const key = tr ? `t:${tr.clipId}:${tr.side}` : sel.map((c) => c.id).join(',');
-  if (!full && key === currentKey && document.activeElement && root.contains(document.activeElement)) return; // don't fight typing
+  // Don't redraw under someone who is typing. Only text boxes count: a focused button, menu,
+  // switch or slider must not stop the panel from showing a change (e.g. an effect added or removed).
+  const f = document.activeElement;
+  const typing = f && root.contains(f) && (f.tagName === 'TEXTAREA' || f.isContentEditable || (f.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'color', 'button'].includes(f.type)));
+  if (!full && key === currentKey && typing) return;
   currentKey = key;
   const scrollTop = bodyEl.scrollTop;
   if (tr) { setCropMode(null); cancelColorPick(); return renderTransition(clipById(tr.clipId), tr.side); }
@@ -125,7 +130,40 @@ function videoTab(c) {
       slider({ label: 'Opacity', min: 0, max: 100, value: Math.round(tf.opacity * 100), unit: '%', reset: 100, ...live((v) => { tf.opacity = v / 100; }) }),
       select({ label: 'Blend mode', value: c.blend || 'normal', options: BLEND_MODES.map((b) => [b, b[0].toUpperCase() + b.slice(1)]), onChange: (v) => edit(() => { c.blend = v; }) })),
   ];
+  if (c.type === 'video' || c.type === 'image') out.push(shapeSection(c), zoomSection(c));
   return out;
+}
+
+// ---------- shape (rectangle, rounded, circle) and an outline ----------
+function shapeSection(c) {
+  const bd = c.border || { width: 0, color: '#ffffff' };
+  return section('Shape',
+    h('div.chips', [['rect', 'Rectangle'], ['rounded', 'Rounded'], ['circle', 'Circle']].map(([id, n]) =>
+      h('button.chip-btn', { class: `chip-btn${(c.shape || 'rect') === id ? ' on' : ''}`, onclick: () => edit(() => { c.shape = id === 'rect' ? null : id; }) }, n))),
+    slider({ label: 'Outline', min: 0, max: 24, step: 1, value: bd.width, unit: 'px', reset: 0, ...live((v) => { c.border = { ...(c.border || { color: '#ffffff' }), width: v }; }) }),
+    bd.width > 0 ? colorRow({ label: 'Outline colour', value: bd.color, onStart: checkpoint, onInput: (v) => { c.border = { ...c.border, color: v }; changed('drag'); app.player.requestRender(); }, onChange: () => changed() }) : null,
+    h('div.hint', 'Circle keeps the middle of the picture. Crop it to a square first for a perfect circle, like a webcam bubble.'));
+}
+
+// ---------- zoom to area ----------
+function zoomSection(c) {
+  const zs = c.zooms || [];
+  const fps = store.project.fps || 30;
+  const add = () => {
+    const at = clamp(store.time - c.start, 0, Math.max(0, c.duration - 1));
+    startAreaPick((r) => edit(() => { (c.zooms ||= []).push({ at, dur: Math.min(3, c.duration - at), ...r }); c.zooms.sort((a, b) => a.at - b.at); }));
+  };
+  return section('Zoom to area',
+    h('div.hint', 'Zooms smoothly into part of the picture and back out, like pointing at a menu in a screen recording.'),
+    ...zs.map((z, i) => h('div.zoom-item',
+      h('div.top', icon('zoomIn', 14), `Zoom ${i + 1}`, h('span.hint', ` at ${fmtDur(z.at)}`), h('span.sp'),
+        h('button.ibtn.sm', { title: 'Show it', onclick: () => app.player.seek(c.start + z.at + Math.min(1, z.dur / 2)) }, icon('play', 13)),
+        h('button.ibtn.sm', { title: 'Change the area', onclick: () => startAreaPick((r) => edit(() => Object.assign(z, r)), z) }, icon('crop', 14)),
+        h('button.ibtn.sm', { title: 'Remove', onclick: () => edit(() => { c.zooms.splice(i, 1); }) }, icon('x', 14))),
+      slider({ label: 'Starts at', min: 0, max: Math.max(0.1, c.duration - 0.5), step: 1 / fps, value: z.at, unit: 's', ...live((v) => { z.at = v; z.dur = Math.min(z.dur, c.duration - v); }) }),
+      slider({ label: 'Length', min: 0.8, max: Math.max(0.8, c.duration - z.at), step: 0.1, value: z.dur, unit: 's', ...live((v) => { z.dur = v; }) }),
+      slider({ label: 'Ease', min: 0.1, max: 2, step: 0.05, value: z.ramp ?? 0.6, unit: 's', reset: 0.6, ...live((v) => { z.ramp = v; }) }))),
+    h('div.row', h('button.btn.small', { onclick: add }, icon('plus', 14), 'Add zoom at playhead')));
 }
 
 // ---------- crop ----------
@@ -278,6 +316,16 @@ function audioTab(c) {
       slider({ label: 'Fade in', min: 0, max: Math.min(10, c.duration), step: 0.1, value: c.fadeIn || 0, unit: 's', reset: 0, ...live((v) => { c.fadeIn = v; }) }),
       slider({ label: 'Fade out', min: 0, max: Math.min(10, c.duration), step: 0.1, value: c.fadeOut || 0, unit: 's', reset: 0, ...live((v) => { c.fadeOut = v; }) }),
       h('div.row', h('button.btn.small', { onclick: normalize }, icon('volume', 14), 'Normalize loudness'), c.type === 'video' ? h('button.btn.small', { onclick: detachAudio }, icon('detach', 14), 'Detach audio') : null)),
+    section('Clip type',
+      h('div.chips', ROLES.map(([id, name]) => h('button.chip-btn', { class: `chip-btn${roleOf(c) === id ? ' on' : ''}`, onclick: () => edit(() => { c.role = id; if (id === 'music' && !c.duck) c.duck = { on: true, amount: 12 }; }) }, name))),
+      roleOf(c) === 'music'
+        ? [toggle({ label: 'Lower under voices (auto-ducking)', value: !!c.duck?.on, onChange: (v) => edit(() => { c.duck = { amount: 12, ...(c.duck || {}), on: v }; }) }),
+          c.duck?.on ? slider({ label: 'Lower by', min: 3, max: 30, step: 1, value: c.duck.amount ?? 12, unit: 'dB', reset: 12, ...live((v) => { c.duck.amount = v; }) }) : null,
+          h('div.hint', 'The music dips while a clip marked Voice is talking, and comes back up in the pauses.')]
+        : h('div.hint', roleOf(c) === 'voice' ? 'Music set to lower under voices dips while this clip is talking.' : 'Sound effects never make the music dip.')),
+    section('Remove pauses',
+      h('div.hint', 'Cuts the quiet stretches out of this clip and closes the gaps, for tighter talking and voiceovers.'),
+      h('div.row', h('button.btn.small', { onclick: () => openRemovePauses(c) }, icon('split', 14), 'Remove pauses…'))),
     section('Noise removal',
       h('div.hint', 'Removes steady background noise: hum, hiss, fans, air conditioning, wind rumble and room tone.'),
       h('div.chips', [[0, 'Off'], [1, 'Light'], [2, 'Medium'], [3, 'Strong']].map(([lv, n]) => h('button.chip-btn', { class: `chip-btn${(fx.denoise || 0) === lv ? ' on' : ''}`, onclick: () => runDenoise(lv) }, n))),

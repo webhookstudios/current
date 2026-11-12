@@ -411,3 +411,51 @@ function drawPicker() {
   });
   overlay.append(layer);
 }
+
+// ---------- zoom to area: drag a box over the preview ----------
+// The box keeps the project's shape so the zoomed picture fills the frame. Calls onDone({ x, y, w, h })
+// in fractions of the frame, or nothing if Esc is pressed.
+let areaPick = null;
+export function startAreaPick(onDone, initial) {
+  cancelAreaPick();
+  const { width: PWd, height: PHt } = store.project;
+  const aspect = PWd / PHt;
+  const layer = h('div.area-pick', h('div.pick-banner', icon('zoomIn', 15), 'Drag a box around the area to zoom into', h('span', 'Esc to cancel')));
+  const box = h('div.area-box');
+  layer.append(box);
+  frame.append(layer);
+  const r0 = () => frame.getBoundingClientRect();
+  const show = (b) => Object.assign(box.style, { display: 'block', left: b.x * 100 + '%', top: b.y * 100 + '%', width: b.w * 100 + '%', height: b.h * 100 + '%' });
+  if (initial) show(initial);
+  const key = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelAreaPick(); } };
+  document.addEventListener('keydown', key, true);
+  layer.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const r = r0();
+    const sx = (e.clientX - r.left) / r.width, sy = (e.clientY - r.top) / r.height;
+    let b = null;
+    const move = (ev) => {
+      let w = Math.abs((ev.clientX - r.left) / r.width - sx), hh = Math.abs((ev.clientY - r.top) / r.height - sy);
+      // keep the project's shape: in pixels w*PW / (h*PH) = aspect, i.e. w = h in frame fractions
+      const m = Math.max(w, hh);
+      w = hh = clamp(m, 0.08, 1);
+      const x = clamp((ev.clientX - r.left) / r.width >= sx ? sx : sx - w, 0, 1 - w);
+      const y = clamp((ev.clientY - r.top) / r.height >= sy ? sy : sy - hh, 0, 1 - hh);
+      b = { x, y, w, h: hh };
+      show(b);
+    };
+    const up = () => {
+      removeEventListener('pointermove', move); removeEventListener('pointerup', up);
+      if (b && b.w > 0.08) { const done = areaPick.onDone; cancelAreaPick(); done(b); }
+    };
+    addEventListener('pointermove', move); addEventListener('pointerup', up);
+  });
+  areaPick = { layer, key, onDone, aspect };
+}
+export function cancelAreaPick() {
+  if (!areaPick) return;
+  areaPick.layer.remove();
+  document.removeEventListener('keydown', areaPick.key, true);
+  areaPick = null;
+}

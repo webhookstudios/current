@@ -49,6 +49,7 @@ export function initLibrary(el) {
   });
   observer = new IntersectionObserver((entries) => entries.forEach((en) => { if (en.isIntersecting) { en.target.__paint?.(); observer.unobserve(en.target); } }), { root: grid, rootMargin: '200px' });
   store.on('media', () => { if (state.tab === 'media') renderGrid(); });
+  store.on('brand', () => { if (state.tab !== 'media' && state.tab !== 'audio') renderGrid(); });
   store.on('change', (k) => { if (state.tab === 'media' && k === 'history') renderGrid(); });
   setTab('media');
 }

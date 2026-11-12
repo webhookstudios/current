@@ -9,6 +9,11 @@ import { initPreview, busy } from './ui/preview.js';
 import { initTimeline, zoomFit, setZoom, render as renderTimeline } from './ui/timeline.js';
 import { initInspector } from './ui/inspector.js';
 import { openExport } from './ui/export.js';
+import { openVoiceover } from './ui/voiceover.js';
+import { openScreenRecord } from './ui/screenrec.js';
+import { openCaptions, openCaptionEditor } from './ui/captions.js';
+import { loadBrand } from './brand.js';
+import { brandChip, brandMenu } from './ui/brand.js';
 import { PROJECT_TEMPLATES } from './templates/projects.js';
 import { packById } from './templates/packs.js';
 import { drawPreview, makeThumbCanvas } from './ui/previews.js';
@@ -38,6 +43,7 @@ async function boot() {
   window.__currentDirty = () => store.dirty;
 
   buildTopbar();
+  loadBrand();
   initLibrary(document.getElementById('library'));
   initPreview(document.getElementById('preview'), canvas);
   initInspector(document.getElementById('inspector'));
@@ -96,6 +102,10 @@ function buildTopbar() {
       { label: 'Split at playhead', icon: 'split', kbd: 'Ctrl+B', run: splitAtPlayhead },
       { label: 'Freeze frame', icon: 'freeze', run: freezeFrame },
       { label: 'Detach audio', icon: 'detach', run: detachAudio },
+      { label: 'Record voiceover…', icon: 'mic', kbd: 'R', run: openVoiceover },
+      { label: 'Record screen…', icon: 'screen', kbd: 'Shift+R', run: openScreenRecord },
+      { label: 'Generate captions…', icon: 'cc', run: openCaptions },
+      { label: 'Edit captions…', icon: 'text', run: openCaptionEditor },
       { label: 'Select all', kbd: 'Ctrl+A', run: selectAll },
     ]),
     menu('View', () => [
@@ -105,12 +115,14 @@ function buildTopbar() {
       '-',
       ...[['media', 'Media'], ['audio', 'Audio'], ['title', 'Titles'], ['transition', 'Transitions'], ['effect', 'Effects'], ['filter', 'Filters'], ['element', 'Stickers']].map(([id, n], i) => ({ label: n, kbd: `Alt+${i + 1}`, run: () => setTab(id) })),
     ]),
+    menu('Brand', brandMenu),
     menu('Help', () => [
       { label: 'Keyboard shortcuts', icon: 'keyboard', kbd: '?', run: showShortcuts },
       { label: 'About Current', icon: 'info', run: showAbout },
     ]),
     h('div.proj-name', dirtyDot, nameInput),
     h('div.top-right',
+      brandChip(),
       h('button.btn', { onclick: () => saveProject(false) }, icon('save', 15), 'Save'),
       h('button.btn.primary', { onclick: openExport }, icon('download', 15), 'Export')),
   );
@@ -300,6 +312,7 @@ const SHORTCUTS = [
   ['Ctrl+B', 'Split at playhead'], ['Delete', 'Delete selection'], ['Shift+Delete', 'Ripple delete'], ['Ctrl+D', 'Duplicate'],
   ['Ctrl+C / X / V', 'Copy / cut / paste'], ['Ctrl+A', 'Select all'], ['Ctrl+Z', 'Undo'], ['Ctrl+Shift+Z / Ctrl+Y', 'Redo'],
   ['+ / −', 'Zoom timeline'], ['Shift+Z', 'Fit timeline'], ['N', 'Toggle snapping'], [', / .', 'Nudge selected clips by a frame'],
+  ['R', 'Record a voiceover at the playhead'], ['Shift+R', 'Record the screen, with a webcam bubble'],
   ['Ctrl+S', 'Save'], ['Ctrl+O', 'Open'], ['Ctrl+I', 'Import media'], ['Ctrl+E', 'Export'], ['Alt+1…7', 'Library tabs'],
 ];
 function showShortcuts() {
@@ -348,6 +361,8 @@ function initShortcuts() {
       case k === '+' || k === '=': setZoom(store.zoom * 1.4); break;
       case k === '-' || k === '_': setZoom(store.zoom / 1.4); break;
       case k === 'Z' && e.shiftKey: zoomFit(); break;
+      case k === 'R' && e.shiftKey && !ctrl && !e.altKey: openScreenRecord(); break;
+      case k === 'r' && !ctrl && !e.altKey: openVoiceover(); break;
       case k === 'n' || k === 'N': store.snap = !store.snap; document.querySelector('[data-tip^="Snapping"]')?.classList.toggle('on', store.snap); toast(`Snapping ${store.snap ? 'on' : 'off'}`); break;
       case k === ',': nudgeSelection(-1 / fps); break;
       case k === '.': nudgeSelection(1 / fps); break;

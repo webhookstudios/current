@@ -28,9 +28,9 @@ try {
   // library sizes the app promises
   const { PACKS } = await import(base + 'templates/packs.js');
   const { AUDIO_LIBRARY } = await import(base + 'templates/audiolib.js');
-  const want = { titles: [TITLES.length, 75], transitions: [TRANSITIONS.length, 85], effects: [EFFECTS.length, 55], filters: [FILTERS.length, 50], stickers: [ELEMENTS.length, 100],
+  const want = { titles: [TITLES.length, 105], transitions: [TRANSITIONS.length, 85], effects: [EFFECTS.length, 55], filters: [FILTERS.length, 50], stickers: [ELEMENTS.length, 100],
     music: [AUDIO_LIBRARY.filter((a) => a.cat === 'Music').length, 20], sfx: [AUDIO_LIBRARY.filter((a) => a.cat === 'Sound Effects').length, 30],
-    intros: [PACKS.filter((p) => p.cat === 'Intros').length, 25], outros: [PACKS.filter((p) => p.cat === 'Outros').length, 25], backgrounds: [BACKGROUNDS.length, 66] };
+    intros: [PACKS.filter((p) => p.cat === 'Intros').length, 35], outros: [PACKS.filter((p) => p.cat === 'Outros').length, 35], backgrounds: [BACKGROUNDS.length, 66] };
   for (const [k, [have, need]] of Object.entries(want)) if (k === 'backgrounds' ? have < need : have !== need) { fails++; log('COUNT FAIL', k, have, 'expected', need); }
   log('counts', JSON.stringify(Object.fromEntries(Object.entries(want).map(([k, v]) => [k, v[0]]))));
   // every pack layer must point at a real template or sound

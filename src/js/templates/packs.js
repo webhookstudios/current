@@ -10,6 +10,17 @@ const intro = (id, name, dur, layers) => pack('Intros', `intro-${id}`, name, dur
 const outro = (id, name, dur, layers) => pack('Outros', `outro-${id}`, name, dur, layers);
 
 // ---------------- Intros ----------------
+// Professional: calm openers for lessons and company videos, each with a matching outro below.
+intro('pro-block', 'Block Reveal', 5, [['background', 'bg-white', { colors: ['#f3efe6'] }], ['title', 'pro-block'], ['audio', 'sfx-swipe', { at: 0.45 }]]);
+intro('pro-lesson', 'Lesson Opener', 5, [['background', 'bg-navy', { colors: ['#0f1e36'] }], ['title', 'pro-lesson'], ['audio', 'sfx-swipe', { at: 0.2 }]]);
+intro('pro-panel', 'Side Panel', 5, [['background', 'bg-white', { colors: ['#f4f6f9'] }], ['title', 'pro-panel'], ['audio', 'sfx-swipe']]);
+intro('pro-frame', 'Line Frame', 5, [['background', 'bg-charcoal', { colors: ['#15181d'] }], ['title', 'pro-frame']]);
+intro('pro-bands', 'Bold Bands', 5, [['background', 'bg-black', { colors: ['#0e1116'] }], ['title', 'pro-bands'], ['audio', 'sfx-whoosh', { at: 0.05 }]]);
+intro('pro-agenda', 'Lesson Agenda', 5, [['background', 'bg-white', { colors: ['#f7f7fb'] }], ['title', 'pro-agenda'], ['audio', 'sfx-swipe', { at: 0.1 }]]);
+intro('pro-chart', 'Chart Rise', 5, [['background', 'bg-black', { colors: ['#111827'] }], ['title', 'pro-chart'], ['audio', 'sfx-whoosh', { at: 0.15 }]]);
+intro('pro-number', 'Chapter Number', 5, [['background', 'bg-charcoal', { colors: ['#18181b'] }], ['title', 'pro-number'], ['audio', 'sfx-swipe', { at: 0.35 }]]);
+intro('pro-monogram', 'Monogram', 5, [['background', 'bg-white'], ['title', 'pro-monogram'], ['audio', 'sfx-pop', { at: 0.1 }]]);
+intro('pro-shutter', 'Shutter', 5, [['background', 'bg-white', { colors: ['#fdf6e3'] }], ['title', 'pro-shutter'], ['audio', 'sfx-swipe', { at: 0.35 }]]);
 intro('neon', 'Neon Nights', 5, [['background', 'bg-synth'], ['title', 'open-retro'], ['element', 'el-sparkle-burst', { at: 0.4, dur: 3 }], ['audio', 'sfx-whoosh']]);
 intro('cinematic', 'Cinematic Opener', 6, [['background', 'bg-stars'], ['title', 'open-cinematic'], ['element', 'el-frame-bars'], ['audio', 'sfx-boom', { at: 0.2 }]]);
 intro('vlog', 'Hey Vlog', 5, [['background', 'bg-g-sunset'], ['title', 'open-vlog'], ['element', 'emo-wave', { x: 0.3, y: -0.25, scale: 0.45 }], ['audio', 'sfx-pop', { at: 0.3 }]]);
@@ -37,6 +48,17 @@ intro('podcast', 'Podcast Episode', 5, [['background', 'bg-m-ocean-mesh'], ['ele
 intro('hacker', 'Access Granted', 5, [['background', 'bg-code-rain'], ['element', 'el-corner-frame'], ['title', 'basic-glitch', { texts: ['ACCESS GRANTED'] }], ['audio', 'sfx-glitch']]);
 
 // ---------------- Outros ----------------
+// Professional: the matching closers for the professional intros above.
+outro('pro-block', 'Block Reveal Thanks', 6, [['background', 'bg-white', { colors: ['#f3efe6'] }], ['title', 'pro-block-end']]);
+outro('pro-lesson', 'Lesson Complete', 6, [['background', 'bg-navy', { colors: ['#0f1e36'] }], ['title', 'pro-lesson-end'], ['audio', 'sfx-ding', { at: 1.0 }]]);
+outro('pro-panel', 'Side Panel Contact', 6, [['background', 'bg-white', { colors: ['#f4f6f9'] }], ['title', 'pro-panel-end']]);
+outro('pro-frame', 'Line Frame Questions', 6, [['background', 'bg-charcoal', { colors: ['#15181d'] }], ['title', 'pro-frame-end']]);
+outro('pro-bands', 'Bold Bands Thanks', 6, [['background', 'bg-black', { colors: ['#0e1116'] }], ['title', 'pro-bands-end'], ['audio', 'sfx-swipe', { at: 5.3 }]]);
+outro('pro-agenda', 'Lesson Recap', 6, [['background', 'bg-white', { colors: ['#f7f7fb'] }], ['title', 'pro-agenda-end'], ['audio', 'sfx-ding', { at: 1.5 }]]);
+outro('pro-chart', 'Chart Rise Thanks', 6, [['background', 'bg-black', { colors: ['#111827'] }], ['title', 'pro-chart-end']]);
+outro('pro-number', 'Chapter Complete', 6, [['background', 'bg-charcoal', { colors: ['#18181b'] }], ['title', 'pro-number-end']]);
+outro('pro-monogram', 'Monogram Contact', 6, [['background', 'bg-white'], ['title', 'pro-monogram-end']]);
+outro('pro-shutter', 'Shutter Close', 6, [['background', 'bg-white', { colors: ['#fdf6e3'] }], ['title', 'pro-shutter-end'], ['audio', 'sfx-swipe', { at: 5.4 }]]);
 outro('endscreen', 'End Screen', 8, [['background', 'bg-flow'], ['element', 'el-endcards'], ['title', 'end-thanks', { y: -0.3, scale: 0.6, texts: ['Thanks for watching!', ''] }], ['title', 'social-subscribe', { y: 0.06 }]]);
 outro('neon-thanks', 'Neon Thanks', 6, [['background', 'bg-synth'], ['title', 'end-thanks'], ['element', 'el-confetti', { at: 0.6, dur: 4 }]]);
 outro('credits', 'Rolling Credits', 12, [['background', 'bg-black'], ['title', 'end-roll']]);

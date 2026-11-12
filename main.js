@@ -1,7 +1,7 @@
 // Current: Electron main process.
 // Owns windows, native dialogs, project files, media proxies and the GStreamer export pipeline.
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, desktopCapturer, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -17,7 +17,8 @@ try {
 } catch (e) { /* starting fresh is fine */ }
 // Wayland/X11 auto-detection, and a stable WM class so the dock icon matches the .desktop file.
 app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
-app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations');
+// PipeWire screen capture goes through the desktop's own share dialog (xdg-desktop-portal).
+app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations,WebRTCPipeWireCapturer');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 const USER = () => app.getPath('userData');
@@ -84,12 +85,18 @@ function createWindow() {
   if (selftest) {
     ipcMain.handle('selftest:capture', async (_e, file) => { const img = await win.webContents.capturePage(); fs.writeFileSync(file, img.toPNG()); return true; });
     ipcMain.once('selftest:done', (_e, code) => { setTimeout(() => app.exit(code || 0), 200); });
-    win.webContents.once('did-finish-load', () => setTimeout(() => win.webContents.executeJavaScript(`import(${JSON.stringify('file://' + path.resolve(selftest))}).catch(e => { console.error('SELFTEST LOAD', e.stack); window.native.selftestDone(1); })`), 1500));
+    win.webContents.once('did-finish-load', () => setTimeout(() => win.webContents.executeJavaScript(`import(${JSON.stringify('file://' + path.resolve(selftest))}).then(() => 0, e => { console.error('SELFTEST LOAD', e.stack); window.native.selftestDone(1); })`), 1500));
   }
 }
 
 app.whenReady().then(() => {
   fs.mkdirSync(CACHE(), { recursive: true });
+  // Screen recording: the desktop asks the user which screen or window to share.
+  session.defaultSession.setDisplayMediaRequestHandler((_req, callback) => {
+    desktopCapturer.getSources({ types: ['screen', 'window'] })
+      .then((sources) => callback(sources[0] ? { video: sources[0] } : {}))
+      .catch(() => callback({}));
+  });
   createWindow();
 });
 app.on('window-all-closed', () => app.quit());
@@ -133,6 +140,24 @@ ipcMain.handle('dialog:exportPath', async (_e, suggested, ext) => {
   return r.filePath.toLowerCase().endsWith('.' + ext) ? r.filePath : `${r.filePath}.${ext}`;
 });
 
+ipcMain.handle('dialog:chooseImage', async (_e, title) => {
+  const r = await dialog.showOpenDialog(win, {
+    title: title || 'Choose an image', properties: ['openFile'],
+    filters: [{ name: 'Images', extensions: ['png', 'svg', 'jpg', 'jpeg', 'webp'] }],
+  });
+  return r.canceled ? null : r.filePaths[0];
+});
+
+// Brand kits are kept for the whole app, next to the recent-projects list.
+const BRAND = () => path.join(USER(), 'brand-kits.json');
+ipcMain.handle('brand:load', async () => { try { return JSON.parse(fs.readFileSync(BRAND(), 'utf8')); } catch { return null; } });
+ipcMain.handle('brand:save', async (_e, data) => {
+  const tmp = BRAND() + '.tmp';
+  await fs.promises.writeFile(tmp, JSON.stringify(data, null, 1));
+  await fs.promises.rename(tmp, BRAND());
+  return true;
+});
+
 ipcMain.handle('dialog:message', async (_e, opts) => (await dialog.showMessageBox(win, opts)).response);
 
 ipcMain.handle('fs:readText', async (_e, p) => fs.promises.readFile(p, 'utf8'));
@@ -154,10 +179,123 @@ ipcMain.handle('fs:cacheWrite', async (_e, name, data) => {
   return p;
 });
 ipcMain.handle('fs:cachePath', async (_e, name) => path.join(CACHE(), path.basename(name)));
+// Voiceovers are kept in ~/Videos/Current voiceovers, not the cache, so projects keep working.
+ipcMain.handle('voiceover:save', async (_e, data) => {
+  const dir = path.resolve(process.env.CURRENT_VOICEOVER_DIR || path.join(app.getPath('videos'), 'Current voiceovers'));
+  await fs.promises.mkdir(dir, { recursive: true });
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+  let p = path.join(dir, `Voiceover ${stamp}.wav`);
+  for (let i = 2; fs.existsSync(p); i++) p = path.join(dir, `Voiceover ${stamp} (${i}).wav`);
+  await fs.promises.writeFile(p, Buffer.from(data));
+  return p;
+});
 ipcMain.handle('shell:showItem', async (_e, p) => shell.showItemInFolder(p));
 ipcMain.handle('shell:openExternal', async (_e, url) => { if (/^https?:/.test(url)) await shell.openExternal(url); });
 ipcMain.handle('app:info', async () => ({ version: app.getVersion(), videos: app.getPath('videos'), home: os.homedir(), cpus: os.cpus().length }));
 ipcMain.handle('win:setTitle', async (_e, t) => { if (win) win.setTitle(t); });
+ipcMain.handle('win:minimize', async () => { win?.minimize(); });
+ipcMain.handle('win:restore', async () => { if (win) { win.restore(); win.focus(); } });
+
+// Screen and webcam recordings go to ~/Videos/Current recordings. MediaRecorder's WebM video has no
+// duration or seek index, so it is rewrapped (not re-encoded); microphone sound arrives as WAV.
+ipcMain.handle('recording:save', async (_e, data, name, ext = 'webm') => {
+  const dir = path.resolve(process.env.CURRENT_RECORDING_DIR || path.join(app.getPath('videos'), 'Current recordings'));
+  await fs.promises.mkdir(dir, { recursive: true });
+  let out = path.join(dir, `${name}.${ext}`);
+  for (let i = 2; fs.existsSync(out); i++) out = path.join(dir, `${name} (${i}).${ext}`);
+  if (ext !== 'webm') { await fs.promises.writeFile(out, Buffer.from(data)); return out; }
+  // Video only (sound is saved separately as WAV): rewrap so the file has a duration and seek index.
+  const raw = path.join(CACHE(), `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.webm`);
+  await fs.promises.writeFile(raw, Buffer.from(data));
+  const desc = `filesrc location=${gstQuote(raw)} ! matroskademux name=d matroskamux name=m ! filesink location=${gstQuote(out)} d.video_0 ! video/x-vp8 ! queue ! m.`;
+  const ok = await new Promise((resolve) => {
+    const p = spawn('gst-launch-1.0', ['-q', '-e', ...desc.split(/ (?=(?:[^"]*"[^"]*")*[^"]*$)/)], { stdio: 'ignore' });
+    const limit = setTimeout(() => { try { p.kill('SIGKILL'); } catch { /* gone */ } }, 30000 + data.byteLength / 2e4);
+    p.on('close', (code) => { clearTimeout(limit); resolve(code === 0 && fs.existsSync(out) && fs.statSync(out).size > 1000); });
+    p.on('error', () => { clearTimeout(limit); resolve(false); });
+  });
+  if (!ok) await fs.promises.copyFile(raw, out); // still playable, just without a seek index
+  fs.promises.unlink(raw).catch(() => {});
+  return out;
+});
+
+// ---------- automatic captions (whisper.cpp from Ubuntu's archive; models downloaded once) ----------
+const WHISPER = () => process.env.CURRENT_WHISPER_CLI || '/usr/bin/whisper-cli';
+const MODELS = {
+  standard: { file: 'ggml-base-q5_1.bin', size: 59707625, sha256: '422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898', dtw: 'base' },
+  accurate: { file: 'ggml-small-q5_1.bin', size: 190085487, sha256: 'ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb', dtw: 'small' },
+};
+const MODEL_DIR = () => path.join(USER(), 'models');
+const modelPath = (id) => path.join(MODEL_DIR(), MODELS[id].file);
+const sendProgress = (msg) => win?.webContents.send('captions:progress', msg);
+
+ipcMain.handle('captions:status', async () => ({
+  engine: !!process.env.CURRENT_FAKE_WHISPER || fs.existsSync(WHISPER()),
+  models: Object.fromEntries(Object.keys(MODELS).map((id) => [id, { have: !!process.env.CURRENT_FAKE_WHISPER || fs.existsSync(modelPath(id)), size: MODELS[id].size }])),
+}));
+
+ipcMain.handle('captions:download', async (_e, id) => {
+  const m = MODELS[id];
+  if (!m) throw new Error('Unknown model');
+  await fs.promises.mkdir(MODEL_DIR(), { recursive: true });
+  const part = modelPath(id) + '.part';
+  const res = await fetch(`https://huggingface.co/ggerganov/whisper.cpp/resolve/main/${m.file}`);
+  if (!res.ok || !res.body) throw new Error(`The download failed (${res.status}).`);
+  const hash = require('crypto').createHash('sha256');
+  const out = fs.createWriteStream(part);
+  let got = 0, last = 0;
+  for await (const chunk of res.body) {
+    out.write(chunk); hash.update(chunk); got += chunk.length;
+    if (got - last > 1 << 20) { last = got; sendProgress({ phase: 'download', p: got / m.size }); }
+  }
+  await new Promise((r) => out.end(r));
+  if (hash.digest('hex') !== m.sha256) { fs.promises.unlink(part).catch(() => {}); throw new Error('The downloaded model did not match its checksum, so it was not used. Try again.'); }
+  await fs.promises.rename(part, modelPath(id));
+  return true;
+});
+
+let whisperJob = null;
+ipcMain.handle('captions:transcribe', async (_e, wavPath, id, lang) => {
+  if (process.env.CURRENT_FAKE_WHISPER) { // tests: a ready-made transcript
+    sendProgress({ phase: 'transcribe', p: 0.5 });
+    return parseWhisper(JSON.parse(fs.readFileSync(process.env.CURRENT_FAKE_WHISPER, 'utf8')));
+  }
+  const base = path.join(CACHE(), `captions-${Date.now()}`);
+  // -dtw aligns each word to the sound (whisper's own word times drift by seconds); it needs flash attention off
+  const args = ['-m', modelPath(id), '-f', wavPath, '-l', lang || 'auto', '-ml', '1', '-sow', '-ojf', '-nfa', '-dtw', MODELS[id].dtw, '-of', base, '-pp', '-t', String(Math.max(2, Math.min(8, os.cpus().length - 1)))];
+  const code = await new Promise((resolve, reject) => {
+    const p = spawn(WHISPER(), args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    whisperJob = p;
+    let err = '';
+    p.stderr.on('data', (d) => {
+      err += d;
+      const m = /progress =\s*(\d+)%/.exec(String(d));
+      if (m) sendProgress({ phase: 'transcribe', p: +m[1] / 100 });
+    });
+    p.on('close', (c) => { whisperJob = null; c === 0 ? resolve(c) : reject(new Error(err.trim().split('\n').slice(-2).join('\n') || `whisper-cli stopped (${c})`)); });
+    p.on('error', (e) => { whisperJob = null; reject(e); });
+  });
+  const json = JSON.parse(await fs.promises.readFile(base + '.json', 'utf8'));
+  fs.promises.unlink(base + '.json').catch(() => {});
+  return code === 0 ? parseWhisper(json) : [];
+});
+ipcMain.handle('captions:cancel', async () => { try { whisperJob?.kill('SIGKILL'); } catch { /* gone */ } });
+
+// whisper-cli -ml 1 -sow gives one segment per word. Where the aligned time (t_dtw, in 10 ms steps) of the
+// word's first token is there, it is the word's start; the page then reads each word's end from the sound.
+function parseWhisper(json) {
+  const words = (json.transcription || [])
+    .map((s) => {
+      const tok = (s.tokens || []).find((t) => t.text.trim() && !/^\[_/.test(t.text) && t.t_dtw >= 0);
+      return { text: String(s.text || '').trim(), t0: tok ? tok.t_dtw / 100 : (s.offsets?.from ?? 0) / 1000, t1: (s.offsets?.to ?? 0) / 1000 };
+    })
+    .filter((w) => w.text && !/^[[(].*[\])]$/.test(w.text)); // drop [BLANK_AUDIO], (music) and similar
+  for (let i = 1; i < words.length; i++) words[i].t0 = Math.max(words[i].t0, words[i - 1].t0);
+  words.forEach((w, i) => { w.t1 = Math.max(w.t0 + 0.1, Math.min(w.t1, words[i + 1]?.t0 ?? Infinity)); });
+  return words;
+}
 
 // ---------- recent projects ----------
 function readRecent() { try { return JSON.parse(fs.readFileSync(RECENT(), 'utf8')); } catch { return []; } }

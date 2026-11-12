@@ -4,6 +4,7 @@ import { store, mediaById, projectDuration } from '../state.js';
 import { fileUrl } from '../util.js';
 import { visualStack, sortedByTrack, audibleAt, sourceTime, clipGain } from './scene.js';
 import { buildChain } from './audio.js';
+import { duckGain } from './duck.js';
 import { images, playPath } from './media.js';
 
 export class Player {
@@ -118,7 +119,7 @@ export class Player {
       const m = mediaById(c.mediaId);
       const upcoming = c.start > t;
       const want = sourceTime(c, upcoming ? c.start : t, m?.duration);
-      const g = upcoming || muted.has(c.trackId) ? 0 : clipGain(c, t);
+      const g = upcoming || muted.has(c.trackId) ? 0 : clipGain(c, t) * duckGain(c, t);
       e.gain.gain.setTargetAtTime(g, this.actx.currentTime, 0.012);
       for (const el of [e.v, e.a]) {
         if (!el) continue;
@@ -137,11 +138,14 @@ export class Player {
   }
 
   // ---------- transport ----------
-  play() {
+  // openEnded: keep going past the end of the project instead of stopping there (used while
+  // recording a voiceover, which may run longer than the video, or start after it).
+  play({ openEnded = false } = {}) {
     if (store.playing) return;
     if (this.actx.state === 'suspended') this.actx.resume();
     const dur = projectDuration();
-    if (store.time >= dur - 0.05) store.time = 0;
+    this.openEnded = openEnded;
+    if (!openEnded && store.time >= dur - 0.05) store.time = 0;
     store.playing = true;
     this.t0 = store.time;
     this.p0 = performance.now();
@@ -150,7 +154,7 @@ export class Player {
       if (!store.playing) return;
       let t = this.t0 + (performance.now() - this.p0) / 1000;
       const end = this.loopRange ? this.loopRange[1] : projectDuration();
-      if (t >= end) {
+      if (t >= end && !this.openEnded) {
         if (this.loopRange) { this.t0 = this.loopRange[0]; this.p0 = performance.now(); t = this.t0; } else { store.time = end; this.pause(); return; }
       }
       store.time = t;
@@ -163,6 +167,7 @@ export class Player {
   }
   pause() {
     store.playing = false;
+    this.openEnded = false;
     cancelAnimationFrame(this.raf);
     for (const e of this.els.values()) { e.v?.pause(); e.a?.pause(); }
     store.emit('play', false);

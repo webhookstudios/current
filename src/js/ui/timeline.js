@@ -10,6 +10,9 @@ import { stripFrameAt, peaks, thumbs } from '../engine/media.js';
 import { playPath } from '../engine/media.js';
 import { transitionById } from '../templates/transitions.js';
 import { showMenu, toast } from './widgets.js';
+import { openVoiceover } from './voiceover.js';
+import { openScreenRecord } from './screenrec.js';
+import { openCaptions, openCaptionEditor } from './captions.js';
 
 const TRACK_H = { video: 62, audio: 50 };
 const RULER_H = 30;
@@ -36,6 +39,9 @@ export function initTimeline(el) {
     tb('freeze', 'Freeze frame', freezeFrame),
     tb('detach', 'Detach audio', detachAudio),
     tb('volume', 'Audio settings', () => store.emit('inspect', 'audio')),
+    tb('mic', 'Record voiceover (R)', openVoiceover),
+    tb('screen', 'Record screen (Shift+R)', openScreenRecord),
+    tb('cc', 'Captions', () => (store.project.clips.some((c) => c.caption) ? openCaptionEditor() : openCaptions())),
     tb('color', 'Color', () => store.emit('inspect', 'color')),
     h('div.sep'), snapBtn,
     h('div.sp'),
@@ -309,6 +315,9 @@ function placePlayhead(follow) {
   const x = timeToX(store.time);
   playheadEl.style.left = x + 'px';
   playheadEl.style.height = content.style.height;
+  // A voiceover can run past the end of the project: grow the timeline ahead of the playhead.
+  const need = x + 30 * store.zoom;
+  if (parseFloat(content.style.width) < need) { content.style.width = need + 'px'; drawRuler(); }
   if (follow && store.playing) {
     if (x > scroll.scrollLeft + scroll.clientWidth - 60) scroll.scrollLeft = x - 120;
     else if (x < scroll.scrollLeft) scroll.scrollLeft = Math.max(0, x - 60);

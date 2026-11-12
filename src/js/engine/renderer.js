@@ -6,7 +6,7 @@ import { titleById } from '../templates/titles.js';
 import { elementById, backgroundById } from '../templates/elements.js';
 import { animDelta } from '../templates/anims.js';
 import { beginParts, endParts } from '../templates/textfx.js';
-import { visualStack, sortedByTrack, localTime } from './scene.js';
+import { visualStack, sortedByTrack, localTime, zoomAt } from './scene.js';
 import { hexToRgb } from '../util.js';
 
 const VS_QUAD = `#version 300 es
@@ -16,8 +16,9 @@ void main(){ vUv = aPos; gl_Position = vec4(aPos * 2.0 - 1.0, 0.0, 1.0); }`;
 const VS_PLACE = `#version 300 es
 in vec2 aPos;
 uniform mat3 uM; uniform vec2 uRes; uniform vec4 uCrop; uniform vec2 uFlip;
-out vec2 vUv;
+out vec2 vUv; out vec2 vQuad;
 void main(){
+  vQuad = aPos;
   vec2 local = mix(uCrop.xy, vec2(1.0) - uCrop.zw, aPos);
   vec3 p = uM * vec3(local, 1.0);
   vec2 c = p.xy / uRes * 2.0 - 1.0;
@@ -29,7 +30,17 @@ const FS_PLACE = `#version 300 es
 precision highp float;
 uniform sampler2D uTex; uniform float uOpacity; uniform float uPremult;
 uniform int uKey; uniform vec3 uKeyCol; uniform float uSim, uSmooth, uSpill;
-in vec2 vUv; out vec4 o;
+uniform int uShape; uniform float uAspect; uniform float uBorderW; uniform vec3 uBorderCol;
+in vec2 vUv; in vec2 vQuad; out vec4 o;
+// Signed distance to the clip's shape, in units of its height (negative inside).
+float shapeDist(){
+  vec2 q = (vQuad - 0.5) * vec2(uAspect, 1.0);
+  if (uShape == 2) return length(q) - 0.5 * min(uAspect, 1.0);
+  vec2 hb = vec2(0.5 * uAspect, 0.5);
+  float r = uShape == 1 ? 0.12 * min(uAspect, 1.0) : 0.0;
+  vec2 d = abs(q) - hb + r;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r;
+}
 vec2 cbcr(vec3 c){ return vec2(-0.168736*c.r - 0.331264*c.g + 0.5*c.b, 0.5*c.r - 0.418688*c.g - 0.081312*c.b); }
 float luma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
 void main(){
@@ -47,6 +58,16 @@ void main(){
     else if (k.b >= k.r) rgb.b = mix(rgb.b, min(rgb.b, max(rgb.r, rgb.g)), uSpill * sp * 2.0);
     else rgb = mix(rgb, desat, uSpill * sp);
     c = vec4(rgb * c.a * a, c.a * a);
+  }
+  if (uShape > 0 || uBorderW > 0.0) {
+    float d = shapeDist();
+    float aa = max(fwidth(d), 1e-4);
+    float inside = 1.0 - smoothstep(-aa, aa, d);
+    if (uBorderW > 0.0) {
+      float ring = smoothstep(-uBorderW - aa, -uBorderW + aa, d);
+      c = mix(c, vec4(uBorderCol, 1.0), ring);
+    }
+    c *= inside;
   }
   o = c * uOpacity;
 }`;
@@ -241,6 +262,7 @@ export class Compositor {
     const byTrack = opts.byTrack || sortedByTrack(project);
     const stack = visualStack(project, t, byTrack);
     for (const { state } of stack) {
+      if (opts.skip && ((state.a && opts.skip(state.a)) || (state.b && opts.skip(state.b)))) continue; // e.g. captions saved as a file only
       const single = state.a && !state.tr ? state.a : null;
       if (single && single.type === 'adjust') { acc = this.adjust(acc, single, t); continue; }
       let layer;
@@ -303,8 +325,17 @@ export class Compositor {
     const ad = animDelta(clip, localTime(clip, t));
     const fit = Math.min(W / sw, H / sh);
     const sc = (tf.scale ?? 1) * ad.scale;
-    const w = sw * fit * sc * ad.scaleX, h = sh * fit * sc;
-    const cx = W / 2 + ((tf.x || 0) + ad.x) * W, cy = H / 2 + ((tf.y || 0) + ad.y) * H;
+    let w = sw * fit * sc * ad.scaleX, h = sh * fit * sc;
+    let cx = W / 2 + ((tf.x || 0) + ad.x) * W, cy = H / 2 + ((tf.y || 0) + ad.y) * H;
+    // zoom to area: move the chosen rectangle of the frame toward the middle and scale it up to fill it
+    const z = zoomAt(clip, localTime(clip, t));
+    if (z) {
+      const s = 1 + (Math.min(1 / z.w, 1 / z.h) - 1) * z.k;
+      const rx = (z.x + z.w / 2) * W, ry = (z.y + z.h / 2) * H;
+      cx = (cx - rx) * s + rx + (W / 2 - rx) * z.k;
+      cy = (cy - ry) * s + ry + (H / 2 - ry) * z.k;
+      w *= s; h *= s;
+    }
     const rot = (((tf.rotation || 0) + ad.rotation) * Math.PI) / 180;
     const out = this.target();
     this.clear(out);
@@ -317,6 +348,12 @@ export class Compositor {
     gl.uniform2f(P.loc('uFlip'), tf.flipH ? 1 : 0, tf.flipV ? 1 : 0);
     gl.uniform1f(P.loc('uOpacity'), (tf.opacity ?? 1) * ad.opacity);
     gl.uniform1f(P.loc('uPremult'), premult);
+    const shape = { rounded: 1, circle: 2 }[clip.shape] || 0;
+    const qw = Math.abs(w) * (1 - (cr.l || 0) - (cr.r || 0)), qh = Math.abs(h) * (1 - (cr.t || 0) - (cr.b || 0));
+    gl.uniform1i(P.loc('uShape'), shape);
+    gl.uniform1f(P.loc('uAspect'), qh > 0 ? qw / qh : 1);
+    gl.uniform1f(P.loc('uBorderW'), clip.border?.width > 0 && qh > 0 ? (clip.border.width * (H / 1080)) / qh : 0);
+    gl.uniform3fv(P.loc('uBorderCol'), hexToRgb(clip.border?.color || '#ffffff'));
     const ck = clip.chroma;
     gl.uniform1i(P.loc('uKey'), ck?.on ? 1 : 0);
     if (ck?.on) {

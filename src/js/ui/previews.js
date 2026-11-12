@@ -1,5 +1,6 @@
 // Library card previews: sample scenes, template thumbnails and hover animations.
 import { Compositor } from '../engine/renderer.js';
+import { previewColors, previewFont } from '../brand.js';
 import { titleById } from '../templates/titles.js';
 import { elementById, backgroundById } from '../templates/elements.js';
 import { packById } from '../templates/packs.js';
@@ -71,7 +72,7 @@ export function drawPreview(canvas, kind, id, t, dur, texts) {
   if (kind === 'background') ctx.clearRect(0, 0, PW, PH);
   else { ctx.drawImage(sampleA, 0, 0); ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, PW, PH); }
   const d = dur || tpl.dur || 5;
-  const S = { W: PW, H: PH, u: PH / 1080, t, d, texts: tpl.texts || [], colors: tpl.colors || [], font: null, scale: 1, params: {} };
+  const S = { W: PW, H: PH, u: PH / 1080, t, d, texts: tpl.texts || [], colors: previewColors(tpl.colors || [], kind, id), font: kind === 'title' ? previewFont() : null, scale: 1, params: {} };
   if (kind === 'element') { zoomedSticker(ctx, tpl, S); return; }
   ctx.save();
   try { tpl.draw(ctx, S); } catch (e) { console.error(e); }
@@ -98,7 +99,8 @@ function drawPack(ctx, pk, t, texts) {
     if (!tpl) continue;
     const override = L.kind === 'title' && firstTitle && texts;
     if (L.kind === 'title') firstTitle = false;
-    const params = { texts: override || L.texts || tpl.texts, colors: L.colors || tpl.colors, ...(L.params || {}) };
+    const params = { texts: override || L.texts || tpl.texts, colors: previewColors(L.colors || tpl.colors, L.kind, L.id), ...(L.params || {}) };
+    if (L.kind === 'title' && previewFont()) params.font = previewFont();
     drawTemplateTo(lc, { type: L.kind, template: L.id, params, start: at, duration: dur }, PW, PH, t);
     ctx.save();
     ctx.translate(PW / 2 + (L.x || 0) * PW, PH / 2 + (L.y || 0) * PH);

@@ -96,6 +96,7 @@ Architecture: amd64
 Maintainer: webhookstudios <354619278+webhookstudios@users.noreply.github.com>
 Installed-Size: $(du -sk "$STAGE/usr" | cut -f1)
 Depends: gstreamer1.0-tools, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-ugly, gstreamer1.0-libav, libgtk-3-0t64 | libgtk-3-0, libnss3, libasound2t64 | libasound2, libgbm1
+Recommends: whisper.cpp, xdg-desktop-portal-gnome
 Replaces: splice (<< 2~)
 Breaks: splice (<< 2~)
 Section: video

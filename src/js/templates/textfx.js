@@ -44,6 +44,9 @@ export function animText(ctx, S, text, x, y, o = {}) {
   return box;
 }
 
+// The same drawing without making it a piece of its own, for text that belongs to a larger piece.
+export const drawText = (ctx, S, text, x, y, o) => animTextRaw(ctx, S, text, x, y, o);
+
 function animTextRaw(ctx, S, text, x, y, o = {}) {
   if (text == null) return { x, y, w: 0, h: 0 };
   text = String(text);
@@ -269,6 +272,18 @@ export function line(ctx, x1, y1, x2, y2, k, color, width) {
   ctx.moveTo(x1, y1);
   ctx.lineTo(x1 + (x2 - x1) * k, y1 + (y2 - y1) * k);
   ctx.stroke();
+}
+
+// Any other shape that can be moved on its own, like a text line or a bar. box is where it sits
+// (unmoved); draw(ctx) paints it there. Call it every frame, visible or not, so piece keys stay stable.
+export function piece(ctx, box, draw) {
+  const P = partBegin();
+  partRecord(P, { x: box.x + P.ox, y: box.y + P.oy, w: box.w, h: box.h }, 'shape');
+  if (!draw) return;
+  ctx.save();
+  ctx.translate(P.ox, P.oy);
+  draw(ctx);
+  ctx.restore();
 }
 
 // Two-phase in/out value for decorations: grows over [delay, delay+dur], shrinks at the end.

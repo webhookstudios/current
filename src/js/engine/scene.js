@@ -1,5 +1,5 @@
 // What is visible/audible at time t: per-track states including transitions.
-import { clamp } from '../util.js';
+import { clamp, ease } from '../util.js';
 
 const ADJ = 0.01;
 
@@ -70,4 +70,17 @@ export function clipGain(c, t) {
   if (c.fadeIn > 0 && lt < c.fadeIn) g *= clamp(lt / c.fadeIn);
   if (c.fadeOut > 0 && lt > c.duration - c.fadeOut) g *= clamp((c.duration - lt) / c.fadeOut);
   return g;
+}
+
+// Zoom to area at clip time lt: { k: 0..1 how far in, x, y, w, h: the area as fractions of the frame }.
+// Each zoom eases in, holds, and eases back out within its own time.
+export function zoomAt(c, lt) {
+  for (const z of c.zooms || []) {
+    if (lt < z.at || lt > z.at + z.dur) continue;
+    const ramp = Math.min(z.ramp ?? 0.6, z.dur / 3);
+    const into = (lt - z.at) / ramp, outOf = (z.at + z.dur - lt) / ramp;
+    const k = ease.inOutCubic(clamp(Math.min(into, outOf, 1)));
+    return { k, x: z.x, y: z.y, w: z.w, h: z.h };
+  }
+  return null;
 }

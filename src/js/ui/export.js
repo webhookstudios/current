@@ -1,11 +1,13 @@
 // Export: settings dialog, offline audio mixdown, frame-by-frame render piped to GStreamer.
 import { h, icon, fmtTime, fmtBytes, clamp, nextFrame } from '../util.js';
+import { ducks, duckCurve } from '../engine/duck.js';
 import { store, projectDuration, mediaById } from '../state.js';
 import { app } from '../actions.js';
 import { modal, toast } from './widgets.js';
 import { decodeFile, buildChain, encodeWav } from '../engine/audio.js';
 import { playPath } from '../engine/media.js';
 import { sortedByTrack } from '../engine/scene.js';
+import { captionClips, captionsSrt, CAPTION_MODES, captionMode } from './captions.js';
 
 const FORMATS = [
   { id: 'mp4', name: 'MP4', sub: 'H.264 · works everywhere', ext: 'mp4' },
@@ -20,7 +22,8 @@ export function openExport() {
   if (dur <= 0) { toast('Add something to the timeline first.', 'err'); return; }
   app.player.pause();
   const short = Math.min(p.width, p.height);
-  const s = { format: 'mp4', name: p.name || 'My Video', res: short, fps: p.fps, quality: 'high' };
+  const s = { format: 'mp4', name: p.name || 'My Video', res: short, fps: p.fps, quality: 'high', captions: captionMode() };
+  const hasCaptions = captionClips().length > 0;
   const body = h('div.exp');
   const fmts = h('div.exp-formats');
   const set = h('div.exp-set');
@@ -43,6 +46,7 @@ export function openExport() {
       isAudio ? null : h('div.row', h('label', 'Resolution'), h('select.grow', { onchange: (e) => { s.res = +e.target.value; draw(); } }, sizes.map((r) => { const [w, hh] = dims(r); return h('option', { value: r, selected: r === s.res }, `${r === 2160 ? '4K' : r + 'p'} · ${w}×${hh}`); }))),
       isAudio ? null : h('div.row', h('label', 'Frame rate'), h('select.grow', { onchange: (e) => { s.fps = +e.target.value; draw(); } }, [24, 25, 30, 50, 60].map((f) => h('option', { value: f, selected: f === s.fps }, `${f} fps`)))),
       h('div.row', h('label', 'Quality'), h('div.chips', ['low', 'medium', 'high'].map((q) => h('button.chip-btn', { class: `chip-btn${s.quality === q ? ' on' : ''}`, onclick: () => { s.quality = q; draw(); } }, q[0].toUpperCase() + q.slice(1))))),
+      hasCaptions ? h('div.row', h('label', 'Captions'), h('select.grow', { onchange: (e) => { s.captions = e.target.value; } }, CAPTION_MODES.map(([v, n]) => h('option', { value: v, selected: s.captions === v }, n)))) : null,
       h('div.row', h('label', 'Duration'), h('span', fmtTime(dur, p.fps).replace(/^00:/, ''))),
       h('div.row', h('label', 'Estimated size'), h('span', `about ${fmtBytes(est)}`)),
     );
@@ -59,7 +63,8 @@ export function openExport() {
         if (!path) return;
         c();
         const k = s.res / short;
-        run({ path, format: s.format, width: Math.round(p.width * k / 2) * 2, height: Math.round(p.height * k / 2) * 2, fps: s.fps, quality: s.quality });
+        if (hasCaptions) store.project.captions = { ...(store.project.captions || {}), mode: s.captions };
+        run({ path, format: s.format, width: Math.round(p.width * k / 2) * 2, height: Math.round(p.height * k / 2) * 2, fps: s.fps, quality: s.quality, captions: hasCaptions ? s.captions : null });
       } },
     ],
   });
@@ -102,7 +107,7 @@ async function run(o) {
         const t = i / o.fps;
         await player.prepareExact(t);
         comp.setSize(o.width, o.height);
-        comp.render(p, t, player.source, { byTrack, offscreen: i % 15 !== 0, keepTextures: true });
+        comp.render(p, t, player.source, { byTrack, offscreen: i % 15 !== 0, keepTextures: true, skip: o.captions === 'file' ? (c) => c.caption : null });
         comp.readPixels(px);
         await window.native.exportFrame(px);
         if (i % 15 === 0) {
@@ -119,11 +124,16 @@ async function run(o) {
     }
     info.textContent = 'Finishing file…';
     const res = await window.native.exportFinish();
+    let srt = null;
+    if (o.captions === 'file' || o.captions === 'both') {
+      srt = res.path.replace(/\.[^./]+$/, '') + '.srt';
+      await window.native.writeText(srt, captionsSrt(p));
+    }
     m.back.remove();
     const secs = (performance.now() - t0) / 1000;
     modal({
       title: 'Export complete',
-      body: h('div', { style: { width: '460px' } }, h('div.row', icon('check', 22), h('b', res.path.split('/').pop())), h('div.hint', `${fmtBytes(res.size)} · ${o.format === 'mp3' ? 'audio' : `${o.width}×${o.height} at ${o.fps} fps`} · took ${fmtTime(secs, 1, false)}`), h('div.hint', { style: { marginTop: '6px', wordBreak: 'break-all' } }, res.path)),
+      body: h('div', { style: { width: '460px' } }, h('div.row', icon('check', 22), h('b', res.path.split('/').pop())), h('div.hint', `${fmtBytes(res.size)} · ${o.format === 'mp3' ? 'audio' : `${o.width}×${o.height} at ${o.fps} fps`} · took ${fmtTime(secs, 1, false)}`), h('div.hint', { style: { marginTop: '6px', wordBreak: 'break-all' } }, res.path), srt ? h('div.hint', { style: { marginTop: '6px' } }, `Captions saved next to it as ${srt.split('/').pop()}. Most players and video sites pick it up.`) : null),
       actions: [{ label: 'Show in folder', run: (c) => { window.native.showItem(res.path); c(); } }, { label: 'Done', primary: true, run: (c) => c() }],
     });
   } catch (e) {
@@ -164,7 +174,13 @@ export async function mixAudio(p, dur) {
     if (c.fadeIn > 0) g.gain.linearRampToValueAtTime(vol, s + Math.min(c.fadeIn, c.duration));
     if (c.fadeOut > 0) { g.gain.setValueAtTime(vol, Math.max(s, e - c.fadeOut)); g.gain.linearRampToValueAtTime(0, e); }
     src.connect(chain.input);
-    chain.output.connect(g);
+    if (ducks(c) && e - s > 0.05) {
+      // auto-ducking: the music dips while a voice is talking
+      const dg = octx.createGain();
+      dg.gain.setValueCurveAtTime(duckCurve(c, s, e), s, e - s);
+      chain.output.connect(dg);
+      dg.connect(g);
+    } else chain.output.connect(g);
     g.connect(octx.destination);
     src.start(s, offset, Math.min(length, seg.duration - offset));
     src.stop(e + 0.01);

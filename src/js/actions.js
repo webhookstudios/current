@@ -13,6 +13,7 @@ import { toast } from './ui/widgets.js';
 import { packById } from './templates/packs.js';
 import { videoTracks, projectDuration } from './state.js';
 import { EPS, mediaKind, baseName } from './util.js';
+import { brandClip } from './brand.js';
 
 export const app = { player: null, busy: null }; // filled in by app.js
 
@@ -70,8 +71,8 @@ export async function clipFromPayload(pl) {
     const m = await libraryMedia(item);
     return makeClip('audio', { mediaId: m.id, name: item.name, duration: m.duration });
   }
-  if (pl.kind === 'title') { const t = titleById(pl.id); return makeClip('title', { template: t.id, name: t.name, duration: t.dur, params: { texts: [...t.texts], colors: [...t.colors] } }); }
-  if (pl.kind === 'element') { const t = elementById(pl.id); return makeClip('element', { template: t.id, name: t.name, duration: t.dur, params: { colors: [...t.colors] } }); }
+  if (pl.kind === 'title') { const t = titleById(pl.id); return brandClip(makeClip('title', { template: t.id, name: t.name, duration: t.dur, params: { texts: [...t.texts], colors: [...t.colors] } }), t); }
+  if (pl.kind === 'element') { const t = elementById(pl.id); return brandClip(makeClip('element', { template: t.id, name: t.name, duration: t.dur, params: { colors: [...t.colors] } }), t); }
   if (pl.kind === 'background') { const t = backgroundById(pl.id); return makeClip('background', { template: t.id, name: t.name, duration: 5, params: { colors: [...t.colors] } }); }
   if (pl.kind === 'effect') { const e = effectById(pl.id); return makeClip('adjust', { name: e.name, duration: 5, effects: [{ id: e.id, amount: e.def }] }); }
   if (pl.kind === 'filter') { const f = filterById(pl.id); return makeClip('adjust', { name: f.name, duration: 5, filter: { id: f.id, amount: 1 } }); }
@@ -125,6 +126,7 @@ export async function insertPack(pack, at, quiet = false) {
       if (L.texts) c.params.texts = [...L.texts];
       if (L.colors) c.params.colors = [...L.colors];
       if (L.params) Object.assign(c.params, L.params);
+      brandClip(c, L.kind === 'title' ? titleById(L.id) : L.kind === 'element' ? elementById(L.id) : null);
     }
     if (c.transform) Object.assign(c.transform, { x: L.x ?? 0, y: L.y ?? 0, scale: L.scale ?? 1 });
     made.push({ c, off: L.at || 0, audio: L.kind === 'audio' });
