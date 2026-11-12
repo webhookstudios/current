@@ -56,8 +56,10 @@ input, select, textarea { font: inherit; color: var(--fg); }
 .ibtn.on { color: var(--accent); }
 .ibtn:disabled { opacity: .35; cursor: default; background: transparent; }
 .ibtn.sm { width: 24px; height: 24px; }
-[data-tip]:hover::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; z-index: 100; pointer-events: none; }
-.tip-up[data-tip]:hover::after { top: auto; bottom: calc(100% + 6px); }
+/* Hover tips (initTips in widgets.js): one label over everything, kept inside the window. */
+.tip-pop { position: fixed; left: 0; top: 0; z-index: 10000; pointer-events: none; width: max-content; max-width: 280px; background: #000; color: #fff; padding: 5px 9px; border-radius: 5px; font-size: 11.5px; line-height: 1.35; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); opacity: 0; transition: opacity .1s; }
+.tip-pop.show { opacity: 1; }
+.tip-pop .tip-off { color: #f3c969; margin-top: 2px; }
 input[type=text], input[type=number], select, textarea { background: var(--bg1); border: 1px solid var(--line2); border-radius: 6px; height: 28px; padding: 0 8px; outline: none; min-width: 0; }
 textarea { height: auto; padding: 6px 8px; resize: vertical; line-height: 1.35; }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); }
@@ -434,10 +436,6 @@ kbd { background: var(--bg4); border: 1px solid var(--line2); border-bottom-widt
 .cap-time { width: 70px; }
 
 /* labelled tools in the timeline toolbar (recording and captions) */
-.tl-lbl { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 8px; margin: 0 2px; border-radius: 6px; border: 1px solid var(--line2); background: var(--bg2); color: var(--fg); font-size: 12px; cursor: pointer; white-space: nowrap; position: relative; }
-.tl-lbl:hover { background: var(--bg4); }
-.tl-lbl svg { color: var(--fg2); }
-@media (max-width: 1320px) { .tl-lbl span { display: none; } .tl-lbl { padding: 0 6px; } }
 /* a section the menus jumped to */
 .sec.flash { animation: sec-flash 1.6s ease-out; border-radius: 8px; }
 @keyframes sec-flash { 0%, 30% { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 16%, transparent); } 100% { background: transparent; box-shadow: 0 0 0 8px transparent; } }

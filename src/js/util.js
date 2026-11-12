@@ -180,6 +180,8 @@ const P = {
   shape: '<rect x="3" y="3" width="10" height="10" rx="2.5"/><circle cx="15.5" cy="15.5" r="5.5"/>',
   zoomArea: '<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3"/><circle cx="14.5" cy="14.5" r="3.5"/><path d="m17 17 4 4"/>',
   pauses: '<path d="M3 10.5v3M6 8v8M9 10.5v3M15 10.5v3M18 8v8M21 10.5v3"/><path d="M12 4v16" stroke-dasharray="2 2.5"/>',
+  chart: '<path d="M3 21h18"/><path d="M6 17v-5M11 17V6M16 17v-8M20 17v-3"/>',
+  midroll: '<rect x="2" y="5" width="6" height="14" rx="1.5"/><rect x="16" y="5" width="6" height="14" rx="1.5"/><path d="M12 8v8M9.5 12h5"/>',
   news: '<path d="M4 4h12a2 2 0 0 1 2 2v12a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2z"/><path d="M18 8h2v10a2 2 0 0 1-2 2"/><path d="M8 8h6M8 12h6M8 16h3"/>',
   grip: '<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
   reset: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',

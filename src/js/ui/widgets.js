@@ -92,3 +92,44 @@ export function confirmBox(message, detail, okLabel = 'OK') {
     modal({ title: message, body: h('div.hint', { style: { maxWidth: '420px' } }, detail), actions: [{ label: 'Cancel', run: (c) => { c(); res(false); } }, { label: okLabel, primary: true, run: (c) => { c(); res(true); } }], onClose: () => res(false) });
   });
 }
+
+// Hover tips: anything with data-tip shows it in a small label after a short pause (at once when moving
+// along a row of buttons). A greyed-out button also shows its data-tip-off, which says what to do first.
+// The label floats over the whole window, so no panel edge cuts it off, and it stays inside the window.
+let tipEl = null, tipFor = null, tipTimer = 0, tipGone = 0, tipWatch = 0;
+const isOff = (el) => el.disabled || el.classList.contains('disabled');
+function showTip(el) {
+  const off = isOff(el) ? el.dataset.tipOff : '';
+  tipEl.replaceChildren(h('div', el.dataset.tip), ...(off ? [h('div.tip-off', off)] : []));
+  tipEl.classList.add('show');
+  const r = el.getBoundingClientRect(), t = tipEl.getBoundingClientRect(), gap = 7;
+  const fitsBelow = r.bottom + gap + t.height <= innerHeight - 4, fitsAbove = r.top - gap - t.height >= 4;
+  const up = el.classList.contains('tip-up') ? fitsAbove || !fitsBelow : !fitsBelow && fitsAbove;
+  const top = up ? r.top - gap - t.height : r.bottom + gap;
+  const left = clamp(r.left + r.width / 2 - t.width / 2, 6, innerWidth - t.width - 6);
+  tipEl.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
+  clearInterval(tipWatch);
+  tipWatch = setInterval(() => { if (!el.isConnected) hideTip(); else if (tipEl.firstChild?.textContent !== el.dataset.tip || !!tipEl.children[1] !== !!(isOff(el) && el.dataset.tipOff)) showTip(el); }, 250);
+}
+export function hideTip() {
+  clearTimeout(tipTimer); clearInterval(tipWatch);
+  if (tipEl?.classList.contains('show')) tipGone = performance.now();
+  tipEl?.classList.remove('show');
+  tipFor = null;
+}
+export function initTips() {
+  tipEl = h('div.tip-pop', { role: 'tooltip' });
+  document.body.append(tipEl);
+  document.addEventListener('pointerover', (e) => {
+    const el = e.target.closest?.('[data-tip]');
+    if (el === tipFor) return;
+    hideTip();
+    if (!el?.dataset.tip) return;
+    tipFor = el;
+    tipTimer = setTimeout(() => { if (tipFor === el && el.isConnected) showTip(el); }, performance.now() - tipGone < 500 ? 0 : 350);
+  });
+  document.addEventListener('pointerout', (e) => { if (!e.relatedTarget) hideTip(); });
+  document.addEventListener('pointerdown', hideTip, true);
+  document.addEventListener('keydown', hideTip, true);
+  document.addEventListener('wheel', hideTip, { capture: true, passive: true });
+}

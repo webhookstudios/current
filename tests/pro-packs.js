@@ -8,7 +8,7 @@ const { drawTemplateTo } = await import(base + 'engine/renderer.js');
 const { titleById } = await import(base + 'templates/titles.js');
 const packs = PACKS.filter((p) => /-pro-/.test(p.id));
 let bad = 0;
-if (packs.length !== 20) { bad++; log('expected 20 professional packs, found', packs.length); }
+if (packs.length !== 30) { bad++; log('expected 30 professional packs, found', packs.length); }
 
 function frame(ctx, pk, W, H, t) {
   const layer = document.createElement('canvas'); layer.width = W; layer.height = H;

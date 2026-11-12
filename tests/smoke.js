@@ -28,9 +28,9 @@ try {
   // library sizes the app promises
   const { PACKS } = await import(base + 'templates/packs.js');
   const { AUDIO_LIBRARY } = await import(base + 'templates/audiolib.js');
-  const want = { titles: [TITLES.length, 105], transitions: [TRANSITIONS.length, 85], effects: [EFFECTS.length, 55], filters: [FILTERS.length, 50], stickers: [ELEMENTS.length, 100],
+  const want = { titles: [TITLES.filter((t) => !t.seq).length, 105], transitions: [TRANSITIONS.length, 85], effects: [EFFECTS.length, 55], filters: [FILTERS.length, 50], stickers: [ELEMENTS.length, 100],
     music: [AUDIO_LIBRARY.filter((a) => a.cat === 'Music').length, 20], sfx: [AUDIO_LIBRARY.filter((a) => a.cat === 'Sound Effects').length, 30],
-    intros: [PACKS.filter((p) => p.cat === 'Intros').length, 35], outros: [PACKS.filter((p) => p.cat === 'Outros').length, 35], backgrounds: [BACKGROUNDS.length, 66] };
+    intros: [PACKS.filter((p) => p.cat === 'Intros').length, 40], outros: [PACKS.filter((p) => p.cat === 'Outros').length, 40], education: [PACKS.filter((p) => p.cat === 'Education').length, 40], professional: [PACKS.filter((p) => p.cat === 'Professional').length, 40], backgrounds: [BACKGROUNDS.length, 66] };
   for (const [k, [have, need]] of Object.entries(want)) if (k === 'backgrounds' ? have < need : have !== need) { fails++; log('COUNT FAIL', k, have, 'expected', need); }
   log('counts', JSON.stringify(Object.fromEntries(Object.entries(want).map(([k, v]) => [k, v[0]]))));
   // every pack layer must point at a real template or sound
@@ -75,6 +75,17 @@ try {
   const shifted = S.project.clips.find((c) => c.type === 'video').start;
   if (Math.abs(shifted - before - 5) > 1e-6) { fails++; log('PACK FAIL intro did not shift timeline', before, shifted); }
   await actions.insertItem({ kind: 'pack', id: 'outro-endscreen' });
+  // a mid-roll goes in at the playhead: the clip under it is split and everything after it moves along
+  {
+    const vid = S.project.clips.find((c) => c.type === 'video');
+    const mid = vid.start + Math.min(1, vid.duration / 2), endBefore = st.projectDuration(), qd = 7;
+    S.time = mid;
+    await actions.insertItem({ kind: 'pack', id: 'edu-quiz' });
+    const right = S.project.clips.find((c) => c !== vid && c.mediaId === vid.mediaId && Math.abs(c.start - (mid + qd)) < 1e-3);
+    const quiz = S.project.clips.find((c) => c.template === 'seq-edu-quiz');
+    if (!right || !quiz || Math.abs(quiz.start - mid) > 1e-3 || Math.abs(st.clipEnd(vid) - mid) > 1e-3 || Math.abs(st.projectDuration() - endBefore - qd) > 1e-3) { fails++; log('PACK FAIL mid-roll', !!right, quiz?.start, mid, st.clipEnd(vid), st.projectDuration() - endBefore); }
+    else log('mid-roll split the clip at', mid.toFixed(2), 'and moved the rest', qd, 's later');
+  }
   log('after packs', S.project.clips.length, 'clips on', S.project.tracks.length, 'tracks');
   S.time = 0;
   const v = clips.find((c) => c.type === 'video');

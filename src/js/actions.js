@@ -10,7 +10,7 @@ import { effectById, filterById } from './templates/effects.js';
 import { transitionById } from './templates/transitions.js';
 import { AUDIO_LIBRARY, libraryAudioPath } from './templates/audiolib.js';
 import { toast } from './ui/widgets.js';
-import { packById } from './templates/packs.js';
+import { packById, MIDROLL_CATS } from './templates/packs.js';
 import { videoTracks, projectDuration } from './state.js';
 import { EPS, mediaKind, baseName } from './util.js';
 import { brandClip } from './brand.js';
@@ -112,7 +112,9 @@ export async function insertItem(pl, at) {
 }
 
 // ---------- intro / outro packs ----------
-// Intros added with + go at the very start (everything else shifts later); outros go at the end.
+// Intros added with + go at the very start (everything else shifts later); outros go at the end;
+// mid-rolls (Education, Professional) go in at the playhead: clips under it are split there and
+// everything after it moves along, so nothing is covered.
 // A drop places the pack at the drop point, stacking its layers upward from the dropped track.
 export async function insertPack(pack, at, quiet = false) {
   if (!pack) return;
@@ -137,6 +139,10 @@ export async function insertPack(pack, at, quiet = false) {
     else if (pack.cat === 'Intros') {
       t = 0;
       for (const o of store.project.clips) o.start += pack.dur;
+    } else if (MIDROLL_CATS.includes(pack.cat)) {
+      t = Math.min(store.time, projectDuration());
+      for (const o of [...store.project.clips]) if (o.start < t - EPS && clipEnd(o) > t + EPS && !trackById(o.trackId)?.locked) splitClip(o, t);
+      for (const o of store.project.clips) if (o.start >= t - EPS) o.start += pack.dur;
     } else t = projectDuration();
     const vids = () => videoTracks();
     let idx = at?.trackId && trackById(at.trackId)?.kind === 'video' ? vids().indexOf(trackById(at.trackId)) : vids().indexOf(mainTrack());
@@ -203,10 +209,16 @@ export function addTransitionAtPlayhead(id) {
 }
 
 // ---------- edit commands ----------
+// The clips Split cuts: the selected ones under the playhead, or else every unlocked clip there.
+export function splitTargets() {
+  const t = store.time;
+  const sel = selectedClips().filter((c) => c.start < t && clipEnd(c) > t);
+  return sel.length ? sel : store.project.clips.filter((c) => c.start < t - 0.02 && clipEnd(c) > t + 0.02 && !trackById(c.trackId)?.locked);
+}
+
 export function splitAtPlayhead() {
   const t = store.time;
-  let targets = selectedClips().filter((c) => c.start < t && clipEnd(c) > t);
-  if (!targets.length) targets = store.project.clips.filter((c) => c.start < t - 0.02 && clipEnd(c) > t + 0.02 && !trackById(c.trackId)?.locked);
+  const targets = splitTargets();
   if (!targets.length) return;
   edit(() => {
     const created = targets.map((c) => splitClip(c, t)).filter(Boolean);
@@ -266,8 +278,12 @@ export function paste() {
   });
 }
 
+// The video Freeze frame holds: the selected one, or else the one under the playhead.
+const freezeTarget = () => selectedClips().find((x) => x.type === 'video') || store.project.clips.find((x) => x.type === 'video' && x.start <= store.time && clipEnd(x) > store.time);
+export const canFreeze = () => { const c = freezeTarget(); return !!c && store.time > c.start && store.time < clipEnd(c); };
+
 export function freezeFrame() {
-  const c = selectedClips().find((x) => x.type === 'video') || store.project.clips.find((x) => x.type === 'video' && x.start <= store.time && clipEnd(x) > store.time);
+  const c = freezeTarget();
   if (!c) { toast('Select a video clip under the playhead to freeze a frame.', 'err'); return; }
   const t = store.time;
   if (t <= c.start || t >= clipEnd(c)) { toast('Move the playhead over the clip first.', 'err'); return; }

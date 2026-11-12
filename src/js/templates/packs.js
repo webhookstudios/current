@@ -1,8 +1,11 @@
-// Intro and outro packs: ready-made stacks of separate clips (background, titles, stickers, sound).
+// Sequences: intros, outros and mid-rolls, as ready-made stacks of separate clips (background, titles,
+// stickers, sound).
 // Each layer becomes its own clip, so text can be edited and every piece moved or resized.
 // Layers are listed bottom to top. Layer: [kind, templateId, opts]
 //   kind: 'background' | 'title' | 'element' | 'audio'   (audio = library sound id)
 //   opts: { at, dur, x, y, scale, texts, colors, params }
+
+import { SEQ_PACKS } from './sequences.js';
 
 const P = [];
 const pack = (cat, id, name, dur, layers) => P.push({ id, name, cat, dur, layers: layers.map(([kind, tid, o = {}]) => ({ kind, id: tid, ...o })) });
@@ -16,11 +19,12 @@ intro('pro-lesson', 'Lesson Opener', 5, [['background', 'bg-navy', { colors: ['#
 intro('pro-panel', 'Side Panel', 5, [['background', 'bg-white', { colors: ['#f4f6f9'] }], ['title', 'pro-panel'], ['audio', 'sfx-swipe']]);
 intro('pro-frame', 'Line Frame', 5, [['background', 'bg-charcoal', { colors: ['#15181d'] }], ['title', 'pro-frame']]);
 intro('pro-bands', 'Bold Bands', 5, [['background', 'bg-black', { colors: ['#0e1116'] }], ['title', 'pro-bands'], ['audio', 'sfx-whoosh', { at: 0.05 }]]);
-intro('pro-agenda', 'Lesson Agenda', 5, [['background', 'bg-white', { colors: ['#f7f7fb'] }], ['title', 'pro-agenda'], ['audio', 'sfx-swipe', { at: 0.1 }]]);
 intro('pro-chart', 'Chart Rise', 5, [['background', 'bg-black', { colors: ['#111827'] }], ['title', 'pro-chart'], ['audio', 'sfx-whoosh', { at: 0.15 }]]);
 intro('pro-number', 'Chapter Number', 5, [['background', 'bg-charcoal', { colors: ['#18181b'] }], ['title', 'pro-number'], ['audio', 'sfx-swipe', { at: 0.35 }]]);
 intro('pro-monogram', 'Monogram', 5, [['background', 'bg-white'], ['title', 'pro-monogram'], ['audio', 'sfx-pop', { at: 0.1 }]]);
 intro('pro-shutter', 'Shutter', 5, [['background', 'bg-white', { colors: ['#fdf6e3'] }], ['title', 'pro-shutter'], ['audio', 'sfx-swipe', { at: 0.35 }]]);
+// Charts in the vein of Chart Rise (scenes in seq-charts.js), each with a matching outro.
+SEQ_PACKS.filter(([c]) => c === 'Intros').forEach((a) => pack(...a));
 intro('neon', 'Neon Nights', 5, [['background', 'bg-synth'], ['title', 'open-retro'], ['element', 'el-sparkle-burst', { at: 0.4, dur: 3 }], ['audio', 'sfx-whoosh']]);
 intro('cinematic', 'Cinematic Opener', 6, [['background', 'bg-stars'], ['title', 'open-cinematic'], ['element', 'el-frame-bars'], ['audio', 'sfx-boom', { at: 0.2 }]]);
 intro('vlog', 'Hey Vlog', 5, [['background', 'bg-g-sunset'], ['title', 'open-vlog'], ['element', 'emo-wave', { x: 0.3, y: -0.25, scale: 0.45 }], ['audio', 'sfx-pop', { at: 0.3 }]]);
@@ -54,11 +58,11 @@ outro('pro-lesson', 'Lesson Complete', 6, [['background', 'bg-navy', { colors: [
 outro('pro-panel', 'Side Panel Contact', 6, [['background', 'bg-white', { colors: ['#f4f6f9'] }], ['title', 'pro-panel-end']]);
 outro('pro-frame', 'Line Frame Questions', 6, [['background', 'bg-charcoal', { colors: ['#15181d'] }], ['title', 'pro-frame-end']]);
 outro('pro-bands', 'Bold Bands Thanks', 6, [['background', 'bg-black', { colors: ['#0e1116'] }], ['title', 'pro-bands-end'], ['audio', 'sfx-swipe', { at: 5.3 }]]);
-outro('pro-agenda', 'Lesson Recap', 6, [['background', 'bg-white', { colors: ['#f7f7fb'] }], ['title', 'pro-agenda-end'], ['audio', 'sfx-ding', { at: 1.5 }]]);
 outro('pro-chart', 'Chart Rise Thanks', 6, [['background', 'bg-black', { colors: ['#111827'] }], ['title', 'pro-chart-end']]);
 outro('pro-number', 'Chapter Complete', 6, [['background', 'bg-charcoal', { colors: ['#18181b'] }], ['title', 'pro-number-end']]);
 outro('pro-monogram', 'Monogram Contact', 6, [['background', 'bg-white'], ['title', 'pro-monogram-end']]);
 outro('pro-shutter', 'Shutter Close', 6, [['background', 'bg-white', { colors: ['#fdf6e3'] }], ['title', 'pro-shutter-end'], ['audio', 'sfx-swipe', { at: 5.4 }]]);
+SEQ_PACKS.filter(([c]) => c === 'Outros').forEach((a) => pack(...a));
 outro('endscreen', 'End Screen', 8, [['background', 'bg-flow'], ['element', 'el-endcards'], ['title', 'end-thanks', { y: -0.3, scale: 0.6, texts: ['Thanks for watching!', ''] }], ['title', 'social-subscribe', { y: 0.06 }]]);
 outro('neon-thanks', 'Neon Thanks', 6, [['background', 'bg-synth'], ['title', 'end-thanks'], ['element', 'el-confetti', { at: 0.6, dur: 4 }]]);
 outro('credits', 'Rolling Credits', 12, [['background', 'bg-black'], ['title', 'end-roll']]);
@@ -85,6 +89,14 @@ outro('watch-next', 'Watch Next', 8, [['background', 'bg-flow'], ['element', 'el
 outro('swipe', 'Swipe Up', 6, [['background', 'bg-g-lavender'], ['title', 'end-thanks', { y: -0.15, texts: ['Thanks for watching!', ''] }], ['title', 'social-swipe']]);
 outro('stay-tuned', 'Stay Tuned', 5, [['background', 'bg-sunburst'], ['title', 'basic-zoom', { texts: ['STAY TUNED'] }], ['element', 'el-loading', { y: 0.28, scale: 0.6, at: 0.8, dur: 4.2 }]]);
 
+// ---------------- Mid-rolls ----------------
+// Pieces for the middle of a video; + puts them at the playhead and moves everything after it along.
+pack('Education', 'edu-agenda', 'Lesson Agenda', 6, [['background', 'bg-white', { colors: ['#f7f7fb'] }], ['title', 'pro-agenda'], ['audio', 'sfx-swipe', { at: 0.1 }]]);
+pack('Education', 'edu-recap', 'Lesson Recap', 6, [['background', 'bg-white', { colors: ['#f7f7fb'] }], ['title', 'pro-agenda-end'], ['audio', 'sfx-ding', { at: 1.5 }]]);
+SEQ_PACKS.filter(([c]) => c === 'Education').forEach((a) => pack(...a));
+SEQ_PACKS.filter(([c]) => c === 'Professional').forEach((a) => pack(...a));
+
 export const PACKS = P;
-export const PACK_CATS = ['Intros', 'Outros'];
+export const PACK_CATS = ['Intros', 'Outros', 'Education', 'Professional'];
+export const MIDROLL_CATS = ['Education', 'Professional'];
 export const packById = (id) => P.find((p) => p.id === id);

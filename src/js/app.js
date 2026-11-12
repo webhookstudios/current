@@ -18,7 +18,7 @@ import { clipItems, toolsItems, selectedClip, inspect } from './ui/clipmenu.js';
 import { PROJECT_TEMPLATES } from './templates/projects.js';
 import { packById } from './templates/packs.js';
 import { drawPreview, makeThumbCanvas } from './ui/previews.js';
-import { showMenu, closeMenu, modal, toast } from './ui/widgets.js';
+import { showMenu, closeMenu, modal, toast, initTips } from './ui/widgets.js';
 import {
   app, buildFromTemplate, splitAtPlayhead, deleteSelected, duplicateSelected, copySelected, cutSelected, paste, selectAll, freezeFrame, detachAudio, nudgeSelection,
 } from './actions.js';
@@ -49,6 +49,7 @@ async function boot() {
   initPreview(document.getElementById('preview'), canvas);
   initInspector(document.getElementById('inspector'));
   initTimeline(document.getElementById('timeline'));
+  initTips();
   initSplitters();
   initShortcuts();
   store.on('change', updateTitle);
@@ -120,7 +121,7 @@ function buildTopbar() {
     ]),
     menu('Brand', brandMenu),
     menu('Help', () => [
-      { label: 'What’s new in Current 1.4', icon: 'news', run: () => showWhatsNew() },
+      { label: 'What’s new in Current 1.5', icon: 'news', run: () => showWhatsNew() },
       { label: 'Keyboard shortcuts', icon: 'keyboard', kbd: '?', run: showShortcuts },
       { label: 'About Current', icon: 'info', run: showAbout },
     ]),
@@ -242,7 +243,7 @@ async function showStart() {
       h('button.btn.primary.big', { onclick: () => { const ok = !store.dirty || !store.project.clips.length; if (!ok && !confirm('Discard the current project?')) return; loadProject(newProject({ aspect }), null); closeStart(); } }, icon('plus', 18), 'New Project'),
       h('button.btn.big', { onclick: () => openProject() }, icon('folder', 18), 'Open Project'),
       store.project.clips.length ? h('button.btn.ghost', { onclick: closeStart }, 'Back to current project') : null,
-      h('button.btn.ghost.start-news', { onclick: () => showWhatsNew() }, icon('news', 16), 'What’s new in 1.4'),
+      h('button.btn.ghost.start-news', { onclick: () => showWhatsNew() }, icon('news', 16), 'What’s new in 1.5'),
     ),
     h('div.start-main',
       h('h2', 'Recent projects'),
@@ -326,23 +327,25 @@ function showShortcuts() {
     ...rows.flatMap(([k, d]) => [h('span', k.split(' / ').map((x, i) => [i ? ' / ' : '', h('kbd', x)])), h('span', d)])])) });
 }
 
-// Every 1.4 feature, where to find it, and a button that opens it where that makes sense.
+// What's new in 1.5, then every 1.4 feature: where to find each, and a button that opens it where that makes sense.
 function showWhatsNew() {
   const c = selectedClip();
   const sound = c && (c.type === 'audio' || c.type === 'video');
   const rows = [
-    ['mic', 'Record a voiceover', 'Tools › Record voiceover, the Voiceover button above the timeline, or press R. Recording starts at the playhead after a short countdown.', openVoiceover],
-    ['screen', 'Record your screen', 'Tools › Record screen, the Screen button, or Shift+R. Add a round webcam bubble and your microphone.', openScreenRecord],
-    ['cc', 'Automatic captions', 'Tools › Generate captions, or the Captions button. Made on this computer; edit any line in Tools › Edit captions.', openCaptions],
+    ['midroll', 'Mid-rolls: Education and Professional', 'New in 1.5: 80 pieces for the middle of a video, from quizzes and key terms to KPIs, pricing and team members. The Sequences tab on the left (it was Intro/Outro); + puts one in at the playhead.', () => setTab('pack', 'Education')],
+    ['chart', 'Chart intros and outros', 'New in 1.5: Line Climb, Donut Fill, Big Number, Stacked Columns, Ranking Bars and Milestone Timeline, each with a matching outro. Their numbers are editable text. Sequences › Intros.', () => setTab('pack', 'Intros')],
+    ['mic', 'Record a voiceover', 'Tools › Record voiceover, the microphone button above the timeline, or press R. Recording starts at the playhead after a short countdown.', openVoiceover],
+    ['screen', 'Record your screen', 'Tools › Record screen, the screen button above the timeline, or Shift+R. Add a round webcam bubble and your microphone.', openScreenRecord],
+    ['cc', 'Automatic captions', 'Tools › Generate captions, or the CC button above the timeline. Made on this computer; edit any line in Tools › Edit captions.', openCaptions],
     ['brand', 'Brand kits', 'The Brand menu, or the Brand button at the top right. Save your colours, font and logo, keep several, or switch branding off.', openBrandKits],
-    ['film', 'Professional intros, outros and lower thirds', 'The Intro/Outro tab on the left, and Titles › Professional.', () => setTab('pack')],
+    ['film', 'Professional intros, outros and lower thirds', 'The Sequences tab on the left, and Titles › Professional.', () => setTab('pack')],
     ['volume', 'Auto-ducking', 'Music dips under voices by itself. Choose Voice, Music or Sound effect in a clip’s Audio tab, under Clip type.', sound ? () => inspect('audio', 'Clip type') : null],
     ['pauses', 'Remove pauses', 'Clip › Remove pauses, or right-click a clip with sound.', sound ? () => inspect('audio', 'Remove pauses') : null],
     ['zoomArea', 'Zoom to area', 'Clip › Zoom to area, then drag a box over the preview.', c && (c.type === 'video' || c.type === 'image') ? () => inspect('video', 'Zoom to area') : null],
     ['shape', 'Shapes and outline', 'Clip › Shape and outline: show a video or photo as a rounded rectangle or a circle.', c && (c.type === 'video' || c.type === 'image') ? () => inspect('video', 'Shape') : null],
   ];
   const dlg = modal({
-    title: 'What’s new in Current 1.4',
+    title: 'What’s new in Current 1.5',
     body: h('div.news', rows.map(([ic, name, where, run]) => h('div.news-row',
       h('span.ic', icon(ic, 18)),
       h('div', h('b', name), h('div.where', where)),

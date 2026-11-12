@@ -43,6 +43,7 @@ contextBridge.exposeInMainWorld('native', {
   exportCancel: call('export:cancel'),
   gstCheck: call('gst:check'),
   selftestCapture: (f) => ipcRenderer.invoke('selftest:capture', f),
+  selftestMouse: (x, y) => ipcRenderer.invoke('selftest:mouse', x, y),
   selftestDone: (code) => ipcRenderer.send('selftest:done', code),
   pathForFile: (file) => webUtils.getPathForFile(file),
 });

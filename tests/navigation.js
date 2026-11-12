@@ -1,5 +1,5 @@
-// Finding features: the Clip and Tools menus, the grouped toolbar, the right-click menu, the clip panel
-// jumping to a section, What's new and the grouped shortcuts. Needs tests/media/test1.mp4.
+// Finding features: the Clip and Tools menus, the toolbar and its hover tips, the right-click menu, the clip
+// panel jumping to a section, What's new and the grouped shortcuts. Needs tests/media/test1.mp4.
 const base = new URL('../src/js/', import.meta.url).href;
 const OUT = new URL('./out/', import.meta.url).pathname;
 const MEDIA = new URL('./media/', import.meta.url).pathname;
@@ -51,12 +51,32 @@ try {
   await openMenu('Tools');
   check(item('Save captions as a file').querySelector('svg') && !item('Show captions on screen').querySelector('svg'), 'the chosen caption display is ticked');
   W.closeMenu();
-  // toolbar
+  // toolbar: icon buttons, each with a hover tip
   const tb = document.querySelector('.tl-toolbar');
-  const labels = [...tb.querySelectorAll('.tl-lbl')].map((b) => b.textContent);
-  check(labels.join(',') === 'Voiceover,Screen,Captions', `labelled toolbar buttons: ${labels.join(', ')}`);
-  const crop = tb.querySelector('[data-tip="Crop"]');
-  check(crop.disabled && tb.querySelector('[data-tip^="Delete"]').disabled, 'clip buttons are greyed out with nothing selected');
+  const rec = ['Record a voiceover', 'Record your screen', 'Captions'].map((t) => tb.querySelector(`[data-tip^="${t}"]`));
+  check(rec.every((b) => b?.classList.contains('ibtn') && !b.textContent.trim() && b.querySelector('svg')), 'Voiceover, Screen and Captions are icon buttons like Freeze frame, with no words');
+  const controls = [...tb.querySelectorAll('button, input')];
+  check(controls.every((b) => b.dataset.tip), `every toolbar control has a hover tip (${controls.length})`);
+  const crop = tb.querySelector('[data-tip^="Crop"]');
+  const greyable = ['Split', 'Delete', 'Duplicate', 'Freeze frame', 'Detach audio', 'Crop', 'Speed', 'Color', 'Audio'].map((t) => tb.querySelector(`[data-tip^="${t}"]`));
+  check(greyable.every((b) => b?.dataset.tipOff), 'each button that can be greyed out says what to do first');
+  check(crop.disabled && tb.querySelector('[data-tip^="Delete"]').disabled && tb.querySelector('[data-tip^="Split"]').disabled && tb.querySelector('[data-tip^="Freeze"]').disabled, 'clip buttons, Split and Freeze frame are greyed out on an empty timeline');
+  // hover with the real mouse pointer
+  const hover = async (el) => { const r = el.getBoundingClientRect(); await window.native.selftestMouse(r.left + r.width / 2 - 3, r.top + r.height / 2); await wait(60); await window.native.selftestMouse(r.left + r.width / 2, r.top + r.height / 2); await wait(500); return document.querySelector('.tip-pop.show'); };
+  let tip = await hover(crop);
+  check(tip?.textContent.startsWith('Crop:') && tip.querySelector('.tip-off')?.textContent === 'Select a video or photo first', `hovering greyed-out Crop says what it does and what to select (“${tip?.textContent}”)`);
+  await shot('nav-tip-off');
+  tip = await hover(rec[0]);
+  check(tip?.textContent === 'Record a voiceover at the playhead (R)' && !tip.querySelector('.tip-off'), `hovering the microphone shows “${tip?.textContent}”`);
+  const tr = tip.getBoundingClientRect(), br = rec[0].getBoundingClientRect();
+  check(tr.top >= br.bottom && tr.height > 0 && getComputedStyle(tip).opacity === '1', 'the tip sits under the button, in front of the timeline');
+  tip = await hover(tb.querySelector('[data-tip^="Fit"]'));
+  const fr = tip?.getBoundingClientRect();
+  check(fr && fr.right <= innerWidth && fr.left >= 0, 'a tip at the right edge stays inside the window');
+  tip = await hover(document.querySelector('.preview [data-tip^="Play"], [data-tip^="Play"]'));
+  check(tip && tip.getBoundingClientRect().bottom <= document.querySelector('[data-tip^="Play"]').getBoundingClientRect().top, 'player button tips open upwards');
+  await window.native.selftestMouse(5, innerHeight - 5); await wait(200);
+  check(!document.querySelector('.tip-pop.show'), 'the tip goes away when the pointer leaves');
   // a video clip and a sound clip
   const [v] = await A.importPaths([MEDIA + 'test1.mp4']);
   const path = await window.native.cacheWrite('nav-sound.wav', wav(4));
@@ -65,8 +85,11 @@ try {
   await A.insertItem({ kind: 'media', id: v.id }, { trackId: st.mainTrack().id, time: 0 });
   await A.insertItem({ kind: 'media', id: a.id }, { trackId: st.audioTracks()[0].id, time: 0 });
   const vc = S.project.clips.find((c) => c.mediaId === v.id), ac = S.project.clips.find((c) => c.mediaId === a.id);
-  st.select(vc.id); await wait(200);
-  check(!crop.disabled && !tb.querySelector('[data-tip^="Detach"]').disabled, 'with a video selected, Crop and Detach audio light up');
+  st.select(vc.id); A.app.player.seek(1); await wait(200);
+  check(!crop.disabled && !tb.querySelector('[data-tip^="Detach"]').disabled && !tb.querySelector('[data-tip^="Split"]').disabled && !tb.querySelector('[data-tip^="Freeze"]').disabled, 'with a video selected under the playhead, Crop, Detach audio, Split and Freeze frame light up');
+  tip = await hover(crop);
+  check(tip?.textContent.startsWith('Crop:') && !tip.querySelector('.tip-off'), 'hovering Crop now shows only what it does');
+  await window.native.selftestMouse(5, innerHeight - 5); await wait(100);
   clip = await openMenu('Clip');
   check(!clip[0].textContent.startsWith('Select a clip') && !item('Zoom to area').classList.contains('disabled') && !item('Shape and outline').classList.contains('disabled'), 'Clip menu with a video selected: Zoom to area and Shape are available');
   item('Zoom to area').click(); await wait(400);
@@ -89,16 +112,16 @@ try {
   document.querySelector('.modal-h .ibtn')?.click(); await wait(100);
   // View tabs and Alt shortcuts
   const view = (await openMenu('View')).map((i) => i.textContent);
-  check(view.some((t) => t.startsWith('Intro/Outro') && t.endsWith('Alt+3')) && view.some((t) => t.startsWith('Stickers') && t.endsWith('Alt+8')), 'View lists all 8 library tabs, Intro/Outro included, in sidebar order');
+  check(view.some((t) => t.startsWith('Sequences') && t.endsWith('Alt+3')) && view.some((t) => t.startsWith('Stickers') && t.endsWith('Alt+8')), 'View lists all 8 library tabs, Sequences included, in sidebar order');
   W.closeMenu();
   document.dispatchEvent(new KeyboardEvent('keydown', { key: '3', altKey: true, bubbles: true }));
   await wait(200);
-  check(document.querySelector('.lib-tab.active')?.dataset.tab === 'pack', 'Alt+3 opens Intro/Outro');
+  check(document.querySelector('.lib-tab.active')?.dataset.tab === 'pack', 'Alt+3 opens Sequences');
   // help
   await openMenu('Help');
   item('What’s new').click(); await wait(300);
   const rows = document.querySelectorAll('.news-row');
-  check(rows.length === 9 && [...rows].filter((r) => r.querySelector('button')).length >= 5, `What’s new lists ${rows.length} features, with buttons to open them`);
+  check(rows.length === 11 && [...rows].filter((r) => r.querySelector('button')).length >= 7, `What’s new lists ${rows.length} features, with buttons to open them`);
   await shot('nav-3-news');
   document.querySelector('.modal-f .btn').click(); await wait(100);
   await openMenu('Help');

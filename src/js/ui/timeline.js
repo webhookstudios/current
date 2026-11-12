@@ -4,7 +4,7 @@ import {
   store, select, selectedClips, selectTransition, trackClips, clipEnd, clipById, trackById, mediaById, checkpoint, changed, edit, snapTime,
   clearRange, maxDuration, projectDuration, deleteTrack, ensureTrack, VISUAL, prevAdjacent, nextAdjacent, undo, redo,
 } from '../state.js';
-import { app, insertItem, applyLookToClip, setTransition, splitAtPlayhead, deleteSelected, duplicateSelected, freezeFrame, detachAudio, copySelected, paste, importPaths } from '../actions.js';
+import { app, insertItem, applyLookToClip, setTransition, splitAtPlayhead, splitTargets, deleteSelected, duplicateSelected, freezeFrame, canFreeze, detachAudio, copySelected, paste, importPaths } from '../actions.js';
 import { dnd } from './dnd.js';
 import { stripFrameAt, peaks, thumbs } from '../engine/media.js';
 import { playPath } from '../engine/media.js';
@@ -21,41 +21,48 @@ const RULER_H = 30;
 const NEW_H = 22;
 
 let root, scroll, content, ruler, rulerCv, headsInner, playheadEl, tracksEl, zoomRange, snapBtn, undoBtn, redoBtn;
-const selTools = []; // [button, applies()]
-const updateTools = () => selTools.forEach(([b, ok]) => { b.disabled = !ok(); });
+const selTools = []; // [button, usable()] for buttons that only work with the right clip selected or under the playhead
+let capBtn;
+function updateTools() {
+  for (const [b, ok] of selTools) { const off = !ok(); if (b.disabled !== off) b.disabled = off; }
+  const tip = captionClips().length ? 'Edit captions' : 'Captions: make them from the speech';
+  if (capBtn && capBtn.dataset.tip !== tip) capBtn.dataset.tip = tip;
+}
 let layout = []; // [{ track, y, h }]
 const ui = { drag: null, ghost: null, cutHint: null, snapLine: null };
 
 export function initTimeline(el) {
   root = el;
+  // Every button shows what it does on hover; a greyed-out one also says what to do first (data-tip-off).
   const tb = (name, tip, fn, cls = '') => h(`button.ibtn${cls}`, { 'data-tip': tip, onclick: fn }, icon(name, 18));
-  undoBtn = tb('undo', 'Undo (Ctrl+Z)', undo);
-  redoBtn = tb('redo', 'Redo (Ctrl+Shift+Z)', redo);
-  snapBtn = tb('magnet', 'Snapping (N)', () => { store.snap = !store.snap; snapBtn.classList.toggle('on', store.snap); }, '.on');
-  zoomRange = h('input', { type: 'range', min: 0, max: 100, value: zoomToSlider(store.zoom), oninput: () => setZoom(sliderToZoom(+zoomRange.value)) });
-  // Buttons that act on the selection are greyed out until a clip they apply to is selected.
+  // Buttons that need a clip stay greyed out until one they work on is selected (or, for Split and
+  // Freeze frame, is under the playhead).
+  const when = (b, usable, need) => { b.dataset.tipOff = need; selTools.push([b, usable]); return b; };
   const one = () => { const s = selectedClips(); return s.length === 1 ? s[0] : null; };
   const has = (t) => () => { const c = one(); return !!c && tabsFor(c).some(([id]) => id === t); };
-  const forSel = (b, test) => { selTools.push([b, test]); return b; };
-  // The newer tools carry a label, so they can be found without hovering.
-  const lbl = (name, label, tip, fn) => h('button.tl-lbl', { 'data-tip': tip, onclick: fn }, icon(name, 16), h('span', label));
+  const picked = () => store.selection.size > 0;
+  undoBtn = tb('undo', 'Undo (Ctrl+Z)', undo); undoBtn.dataset.tipOff = 'Nothing to undo yet';
+  redoBtn = tb('redo', 'Redo (Ctrl+Shift+Z)', redo); redoBtn.dataset.tipOff = 'Nothing to redo';
+  snapBtn = tb('magnet', 'Snapping (N): clips line up with each other and the playhead', () => { store.snap = !store.snap; snapBtn.classList.toggle('on', store.snap); }, '.on');
+  zoomRange = h('input', { type: 'range', min: 0, max: 100, value: zoomToSlider(store.zoom), 'data-tip': 'Zoom the timeline', oninput: () => setZoom(sliderToZoom(+zoomRange.value)) });
+  capBtn = tb('cc', 'Captions: make them from the speech', () => (captionClips().length ? openCaptionEditor() : openCaptions()));
   const toolbar = h('div.tl-toolbar',
     undoBtn, redoBtn, h('div.sep'),
-    tb('split', 'Split at playhead (Ctrl+B)', splitAtPlayhead),
-    forSel(tb('trash', 'Delete (Del)', () => deleteSelected(false)), () => store.selection.size > 0),
-    forSel(tb('copy', 'Duplicate (Ctrl+D)', duplicateSelected), () => store.selection.size > 0),
+    when(tb('split', 'Split at the playhead (Ctrl+B)', splitAtPlayhead), () => splitTargets().length > 0, 'Move the playhead over a clip first'),
+    when(tb('trash', 'Delete the selected clips (Del)', () => deleteSelected(false)), () => picked() || !!store.selectedTransition, 'Select a clip first'),
+    when(tb('copy', 'Duplicate the selected clips (Ctrl+D)', duplicateSelected), picked, 'Select a clip first'),
     h('div.sep'),
-    tb('freeze', 'Freeze frame: hold the picture at the playhead', freezeFrame),
-    forSel(tb('detach', 'Detach audio onto its own track', detachAudio), () => selectedClips().some((c) => c.type === 'video' && !c.muted)),
+    when(tb('freeze', 'Freeze frame: hold the picture at the playhead for 2 seconds', freezeFrame), canFreeze, 'Move the playhead over a video clip first'),
+    when(tb('detach', 'Detach audio onto its own track', detachAudio), () => selectedClips().some((c) => c.type === 'video' && !c.muted), 'Select a video clip with sound first'),
     h('div.sep'),
-    forSel(tb('crop', 'Crop', () => inspect('crop')), has('crop')),
-    forSel(tb('speed', 'Speed', () => inspect('speed')), has('speed')),
-    forSel(tb('color', 'Color', () => inspect('color')), has('color')),
-    forSel(tb('volume', 'Audio settings', () => inspect('audio')), has('audio')),
+    when(tb('crop', 'Crop: cut away the edges of the picture', () => inspect('crop')), has('crop'), 'Select a video or photo first'),
+    when(tb('speed', 'Speed: make the clip faster or slower', () => inspect('speed')), has('speed'), 'Select a video or sound clip first'),
+    when(tb('color', 'Color: brightness, contrast and tint', () => inspect('color')), has('color'), 'Select a video, photo or sticker first'),
+    when(tb('volume', 'Audio: volume, fades and sound', () => inspect('audio')), has('audio'), 'Select a clip with sound first'),
     h('div.sep'),
-    lbl('mic', 'Voiceover', 'Record a voiceover at the playhead (R)', openVoiceover),
-    lbl('screen', 'Screen', 'Record your screen, with a webcam bubble (Shift+R)', openScreenRecord),
-    lbl('cc', 'Captions', 'Make captions from speech, or edit them', () => (captionClips().length ? openCaptionEditor() : openCaptions())),
+    tb('mic', 'Record a voiceover at the playhead (R)', openVoiceover),
+    tb('screen', 'Record your screen, with a webcam bubble (Shift+R)', openScreenRecord),
+    capBtn,
     h('div.sep'), snapBtn,
     h('div.sp'),
     h('span.hint', { id: 'tl-dur' }),
@@ -63,7 +70,7 @@ export function initTimeline(el) {
     tb('zoomOut', 'Zoom out (-)', () => setZoom(store.zoom / 1.4)),
     zoomRange,
     tb('zoomIn', 'Zoom in (+)', () => setZoom(store.zoom * 1.4)),
-    tb('fit', 'Fit timeline (Shift+Z)', zoomFit));
+    tb('fit', 'Fit the whole video in view (Shift+Z)', zoomFit));
   headsInner = h('div.tl-heads-inner');
   const heads = h('div.tl-heads', h('div.tl-ruler-pad', h('button.ibtn.sm', { 'data-tip': 'Add video track', onclick: () => edit(() => ensureTrack('video', 'top')) }, icon('plus', 15)), h('span.hint', 'Tracks')), headsInner);
   rulerCv = h('canvas');
@@ -88,7 +95,7 @@ export function initTimeline(el) {
 
   store.on('change', () => render());
   store.on('selection', () => { paintSelection(); updateTools(); });
-  store.on('time', () => placePlayhead(true));
+  store.on('time', () => { placePlayhead(true); updateTools(); });
   store.on('strip', () => repaintStrips());
   store.on('waveform', () => repaintStrips());
   store.on('media', () => render());

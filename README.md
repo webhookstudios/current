@@ -11,7 +11,7 @@ A video editor built around ready-made templates. Drag animated titles, transiti
 | Library | Count | Examples |
 |---|---|---|
 | Starter templates | 12 | YouTube vlog, travel montage, travel highlights, product promo, tutorial, podcast clip (1:1), reel/short (9:16), birthday, family memories, gaming highlights, wedding, year in review |
-| Intros & outros | 35 + 35 | Ready-made openings and endings built from separate clips, so every text and piece can be edited and moved. Ten professional pairs for lessons and company videos, each intro with a matching outro: Block Reveal, Lesson Opener, Side Panel, Line Frame, Bold Bands, Lesson Agenda, Chart Rise, Chapter Number, Monogram and Shutter |
+| Sequences | 160 | Ready-made pieces built from separate clips, so every text, number and piece can be edited and moved. **Intros** and **Outros** (40 each), including fifteen professional pairs where each intro has a matching outro: Block Reveal, Lesson Opener, Side Panel, Line Frame, Bold Bands, Chart Rise, Chapter Number, Monogram, Shutter, and six charts (Line Climb, Donut Fill, Big Number, Stacked Columns, Ranking Bars, Milestone Timeline). **Education** mid-rolls (40): Lesson Agenda and Recap, Key Term, Quick Quiz, True or False, Pause and Think, Step by Step, Formula, Worked Example, Vocabulary, Compare Two, Timeline, Poll, Fill in the Blank, Myth vs Fact and more. **Professional** mid-rolls (40): Big Number, Quarterly Bars, Growth Line, Market Share, KPI Dashboard, Sales Funnel, Before / After, Roadmap, Team Member, Customer Quote, Pricing Plans, Org Chart, SWOT, Event Date, Q&A Break and more |
 | Titles | 105 | Openers, professional (with a matching lower third for each professional style), lower thirds, subtitles (incl. word highlight), social, callouts, quotes, countdowns, end credits |
 | Transitions | 85 | Dissolves, dips, wipes, slides, whip pans, zooms, spins, 3D cube/flip/page turn, glitch, film burn, light leak, shapes |
 | Effects | 55 | Blur, tilt shift, fisheye, VHS, old film, CRT, glitch, comic book, shake, mirror, kaleidoscope, rain, snow, dreamy glow |
@@ -45,14 +45,14 @@ New projects start blank. The start screen also offers the 12 starter templates;
 
 ## Recording and captions
 
-- **Record your screen** (Tools › Record screen, <kbd>Shift</kbd>+<kbd>R</kbd>, or the **Screen** button above the timeline). Your desktop asks which screen or window to share. Add a webcam and it lands as a round, outlined bubble in the bottom-right corner; your microphone goes on its own audio track, marked as Voice. Current can hide itself while you record; stop from its floating panel, with Space, or with the stop button your desktop shows in the top bar. Recordings are saved in `~/Videos/Current recordings`.
-- **Automatic captions** (Tools › Generate captions, or the **Captions** button above the timeline). Speech is turned into captions on this computer with whisper.cpp, in 17 languages or detected automatically; nothing is uploaded. The speech model (60 MB, or 190 MB for the most accurate one) downloads once and is checked against its published checksum. Each caption appears as its words are spoken: word times come from whisper's alignment and are matched to the sound, so captions leave during pauses. Long sentences are split into even parts, so no word is left on its own. Captions use any subtitle style (Word Highlight lights up each word as it is spoken), and sit on their own Captions track.
+- **Record your screen** (Tools › Record screen, <kbd>Shift</kbd>+<kbd>R</kbd>, or the screen button above the timeline). Your desktop asks which screen or window to share. Add a webcam and it lands as a round, outlined bubble in the bottom-right corner; your microphone goes on its own audio track, marked as Voice. Current can hide itself while you record; stop from its floating panel, with Space, or with the stop button your desktop shows in the top bar. Recordings are saved in `~/Videos/Current recordings`.
+- **Automatic captions** (Tools › Generate captions, or the **CC** button above the timeline). Speech is turned into captions on this computer with whisper.cpp, in 17 languages or detected automatically; nothing is uploaded. The speech model (60 MB, or 190 MB for the most accurate one) downloads once and is checked against its published checksum. Each caption appears as its words are spoken: word times come from whisper's alignment and are matched to the sound, so captions leave during pauses. Long sentences are split into even parts, so no word is left on its own. Captions use any subtitle style (Word Highlight lights up each word as it is spoken), and sit on their own Captions track.
 - **Edit captions** fixes wording line by line, deletes lines and changes the style of all of them. Each caption is also a normal title you can move, retime or restyle.
 - **Show captions** always on screen (burned in), as an `.srt` caption file saved next to the exported video for viewers to turn on, or both. Choose in the Tools menu, the captions window or Export.
 
 ## Brand kits
 
-Save your colours, a heading font, a logo, your company name and initials as a brand kit. Keep as many kits as you like, pick the one in use from the Brand menu or the button in the top bar, or switch branding off entirely. While a kit is on, the titles, stickers and intros you add take its colours and font (whites, blacks and greys stay, so text stays readable), the library previews show your look, and the Monogram intro and lower third use your initials. **Apply brand** recolours clips you already added, and **Add logo at playhead** puts your logo in the corner.
+Save your colours, a heading font, a logo, your company name and initials as a brand kit. Keep as many kits as you like, pick the one in use from the Brand menu or the button in the top bar, or switch branding off entirely. While a kit is on, the titles, stickers and sequences you add take its colours and font (whites, blacks and greys stay, so text stays readable), the library previews show your look, and the Monogram intro and lower third use your initials. **Apply brand** recolours clips you already added, and **Add logo at playhead** puts your logo in the corner.
 
 ## Audio
 
@@ -80,10 +80,10 @@ Current has only been tested on Ubuntu 26.04.
 
 ### With the deb package (recommended)
 
-Download `current_1.4.1_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
+Download `current_1.5.0_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
 
 ```bash
-sudo apt install ./current_1.4.1_amd64.deb
+sudo apt install ./current_1.5.0_amd64.deb
 ```
 
 Open **Current** from the apps menu. To remove it:
@@ -116,8 +116,9 @@ Or run it straight from the checkout with `npm start`.
 | Edit a clip | Select it and use the panel on the right, or right-click it (or open the **Clip** menu) for everything you can do to it |
 | Crop a clip | Select it, open **Crop**, and drag the handles in the preview |
 | Key out a green screen | Put the clip on a track above the background, crop off anything the screen does not cover, then **Green Screen → Remove background colour** |
-| Add an intro or outro | Open **Intro/Outro** and click **+** (intros go first, outros go last) |
-| Record a voiceover | Put the playhead where it should start, press **R** (or **Tools › Record voiceover**, or the **Voiceover** button), pick your microphone, then **Start recording**. Press **Stop recording** or Space when you're done |
+| Add an intro or outro | Open **Sequences** and click **+** (intros go first, outros go last) |
+| Add a mid-roll | Put the playhead where it should go, open **Sequences › Education** or **Professional** and click **+**: the clip under the playhead is split and everything after it moves along. Chart values and numbers are text you can edit |
+| Record a voiceover | Put the playhead where it should start, press **R** (or **Tools › Record voiceover**, or the microphone button above the timeline), pick your microphone, then **Start recording**. Press **Stop recording** or Space when you're done |
 | Record your screen | Press **Shift+R** (or **Tools › Record screen**), choose a webcam and microphone, press **Start recording**, then pick the screen or window |
 | Add captions | **Tools › Generate captions**, choose the language and style, and how to show them; fix any line in **Tools › Edit captions** |
 | Use your brand | **Brand › Brand kits…**, make a kit, and switch it on |
@@ -126,7 +127,7 @@ Or run it straight from the checkout with `npm start`.
 | Clean up a voice | Select the clip, **Audio → Noise removal**, then try **Voice Enhance** |
 | Export | Click **Export**, pick a format, resolution, frame rate and quality |
 
-Press **?** in the app for all keyboard shortcuts, and see **Help › What’s new** for the newest features and where to find them.
+Hover any button to see what it does; a greyed-out one also says what to select first. Press **?** in the app for all keyboard shortcuts, and see **Help › What’s new** for the newest features and where to find them.
 
 ## Building the package
 
@@ -150,7 +151,7 @@ The package is written to `dist/`. It bundles Electron, so it is about 95 MB.
 npx electron . --selftest=tests/smoke.js
 ```
 
-Further tests: `tests/navigation.js` (menus, toolbar and right-click items), `tests/brand.js`, `tests/audio-tools.js` (ducking and Remove pauses, measured on generated sound), `tests/zoom-shape.js`, `tests/pro-packs.js` and `tests/pro-ui.js`. Screen recording and captions use simulated devices and a ready-made transcript:
+Further tests: `tests/navigation.js` (menus, toolbar, hover tips and right-click items), `tests/text-fit.js` (every title, sticker and sequence keeps its text inside its bubble, also with longer words), `tests/brand.js`, `tests/audio-tools.js` (ducking and Remove pauses, measured on generated sound), `tests/zoom-shape.js`, `tests/pro-packs.js` and `tests/pro-ui.js`. Screen recording and captions use simulated devices and a ready-made transcript:
 
 ```bash
 CURRENT_RECORDING_DIR=tests/out/recordings npx electron . --selftest=tests/screenrec.js --use-fake-device-for-media-stream

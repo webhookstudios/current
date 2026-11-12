@@ -17,7 +17,7 @@ try {
   L.setTab('pack'); await wait(400);
   const names = [...document.querySelectorAll('#library .card .nm, #library .card b, #library .card .name')].map((e) => e.textContent.trim()).filter(Boolean);
   log('first library cards:', names.slice(0, 6).join(' | '));
-  check(names[0] === 'Block Reveal' && names.length >= 10 && names[9] === 'Shutter', `the ten professional intros are listed first (${names.slice(0, 10).join(', ')})`);
+  check(names[0] === 'Block Reveal' && names[8] === 'Shutter' && names[9] === 'Line Climb' && names[14] === 'Milestone Timeline', `the professional and chart intros are listed first (${names.slice(0, 15).join(', ')})`);
   await shot('pro-1-library');
   await A.insertPack((await import(base + 'templates/packs.js')).packById('intro-pro-block'), null, true);
   const t = S.project.clips.find((c) => c.template === 'pro-block');

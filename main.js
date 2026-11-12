@@ -84,6 +84,7 @@ function createWindow() {
   }
   if (selftest) {
     ipcMain.handle('selftest:capture', async (_e, file) => { const img = await win.webContents.capturePage(); fs.writeFileSync(file, img.toPNG()); return true; });
+    ipcMain.handle('selftest:mouse', (_e, x, y) => { win.webContents.sendInputEvent({ type: 'mouseMove', x: Math.round(x), y: Math.round(y) }); return true; });
     ipcMain.once('selftest:done', (_e, code) => { setTimeout(() => app.exit(code || 0), 200); });
     win.webContents.once('did-finish-load', () => setTimeout(() => win.webContents.executeJavaScript(`import(${JSON.stringify('file://' + path.resolve(selftest))}).then(() => 0, e => { console.error('SELFTEST LOAD', e.stack); window.native.selftestDone(1); })`), 1500));
   }

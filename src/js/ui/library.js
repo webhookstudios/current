@@ -16,7 +16,7 @@ import { showMenu, toast } from './widgets.js';
 export const TABS = [
   { id: 'media', label: 'Media', icon: 'media' },
   { id: 'audio', label: 'Audio', icon: 'audio' },
-  { id: 'pack', label: 'Intro/Outro', icon: 'film' },
+  { id: 'pack', label: 'Sequences', icon: 'film' },
   { id: 'title', label: 'Titles', icon: 'title' },
   { id: 'transition', label: 'Transitions', icon: 'transition' },
   { id: 'effect', label: 'Effects', icon: 'effect' },
@@ -59,9 +59,10 @@ export async function doImport() {
   if (paths.length) { setTab('media'); state.cat.media = 'Project Media'; await importPaths(paths); renderCats(); renderGrid(); }
 }
 
-export function setTab(id) {
+export function setTab(id, cat) {
   stopPreview();
   state.tab = id;
+  if (cat) state.cat[id] = cat;
   root.querySelectorAll('.lib-tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === id));
   renderCats();
   renderGrid();
@@ -91,7 +92,7 @@ function itemsFor(tab, cat) {
       if (cat === 'Project Audio') return store.project.media.filter((m) => m.type === 'audio' && !m.library).map((m) => ({ kind: 'media', id: m.id, name: m.name, m }));
       return AUDIO_LIBRARY.filter((a) => a.cat === cat).map((a) => ({ ...a, kind: 'audio-lib' }));
     case 'pack': return PACKS.filter((x) => x.cat === cat).map((x) => ({ ...x, kind: 'pack' }));
-    case 'title': return all(TITLES, 'title');
+    case 'title': return all(TITLES.filter((t) => !t.seq), 'title');
     case 'transition': return all(TRANSITIONS, 'transition');
     case 'effect': return all(EFFECTS, 'effect');
     case 'filter': return all(FILTERS, 'filter');
@@ -117,7 +118,7 @@ export function renderGrid() {
   if (!grid) return;
   const cat = state.cat[state.tab];
   let items = state.q
-    ? catsFor(state.tab).slice(1).concat(state.tab === 'media' || state.tab === 'audio' ? [catsFor(state.tab)[0]] : []).flatMap((c) => itemsFor(state.tab, c))
+    ? (catsFor(state.tab)[0] === 'All' ? catsFor(state.tab).slice(1) : catsFor(state.tab)).flatMap((c) => itemsFor(state.tab, c))
     : itemsFor(state.tab, cat);
   if (state.q) items = items.filter((i, idx, arr) => i.name.toLowerCase().includes(state.q) && arr.findIndex((x) => x.id === i.id) === idx);
   const used = usedIds();

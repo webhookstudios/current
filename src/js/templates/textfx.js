@@ -241,8 +241,9 @@ export function roundRect(ctx, x, y, w, h, r) {
   ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h);
 }
 
-// Rectangle that grows from one side: dir 'l','r','u','d','c' (center).
-export function growRect(ctx, x, y, w, h, k, dir = 'l', color = '#fff', r = 0) {
+// Rectangle that grows from one side: dir 'l','r','u','d','c' (center). alpha fades it (for exits, so
+// a shape with words on it fades with them instead of shrinking out from under them).
+export function growRect(ctx, x, y, w, h, k, dir = 'l', color = '#fff', r = 0, alpha = 1) {
   const P = partBegin();
   x += P.ox; y += P.oy;
   partRecord(P, { x: Math.min(x, x + w), y: Math.min(y, y + h), w: Math.max(Math.abs(w), 6), h: Math.max(Math.abs(h), 6) }, 'rect');
@@ -254,9 +255,13 @@ export function growRect(ctx, x, y, w, h, k, dir = 'l', color = '#fff', r = 0) {
   else if (dir === 'd') rh = h * k;
   else if (dir === 'c') { rw = w * k; rx = x + (w - rw) / 2; }
   else if (dir === 'cv') { rh = h * k; ry = y + (h - rh) / 2; }
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha *= Math.min(1, alpha);
   ctx.fillStyle = color;
   roundRect(ctx, rx, ry, rw, rh, r);
   ctx.fill();
+  ctx.restore();
 }
 
 export function line(ctx, x1, y1, x2, y2, k, color, width) {

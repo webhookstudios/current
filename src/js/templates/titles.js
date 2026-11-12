@@ -2,6 +2,8 @@
 // S: { W, H, u, t, d, texts[], colors[], font, scale }
 import { animText, measure, growRect, line, inout, roundRect, phase, fontStr, piece, drawText } from './textfx.js';
 import { ease, clamp, rgba, shade, hash } from '../util.js';
+import { lerp, kin, kend, dots, traceRect, checkBadge, polyPart, still, fitFont, wrap } from './scenekit.js';
+import { SEQ_TITLES } from './sequences.js';
 
 const TT = [];
 const def = (cat, id, name, o, draw) => TT.push({ id, name, cat, texts: o.texts, colors: o.colors || ['#ffffff', '#ff4d6d'], font: o.font, dur: o.dur || 5, brandTexts: o.brandTexts, draw });
@@ -149,7 +151,7 @@ L3('lt-pill', 'Gradient Pill', { colors: ['#7b2ff7', '#f107a3'], font: 'Poppins'
   const x = lx(S), y = ly(S);
   const m = measure(ctx, S, tx(S, 0), { font: 'Poppins', weight: 700, size: 52 });
   const m2 = measure(ctx, S, tx(S, 1), { font: 'Poppins', fontFixed: true, weight: 400, size: 32 });
-  const w = Math.max(m.w, m2.w) + 140 * S.u, h = 130 * S.u;
+  const h = 130 * S.u, w = h + 8 * S.u + Math.max(m.w, m2.w) + h * 0.42; // the words end well clear of the round end
   const k = inout(S, 0, 0.6, 0.5, ease.outBack);
   if (k > 0) {
     ctx.save();
@@ -176,9 +178,11 @@ L3('lt-news', 'News Banner', { texts: ['LIVE: City Marathon Draws Record Crowd',
   const y = S.H * 0.84, h = 90 * S.u;
   const k = inout(S, 0, 0.5, 0.4, ease.outExpo);
   growRect(ctx, 0, y, S.W, h, k, 'l', 'rgba(10,14,30,0.92)');
-  const tagW = 330 * S.u;
+  const tagO = { font: 'Oswald', fontFixed: true, weight: 700, size: 36, upper: true, spacing: 0.06 };
+  const tagCap = S.W * 0.9 - 28 * S.u - 60 * S.u;
+  const tagW = Math.max(330 * S.u, Math.min(measure(ctx, S, tx(S, 1), tagO).w, tagCap) + 28 * S.u + 60 * S.u); // words, then the live dot
   growRect(ctx, 0, y - 56 * S.u, tagW, 56 * S.u, inout(S, 0.2, 0.4, 0.4, ease.outExpo), 'l', col(S, 1));
-  animText(ctx, S, tx(S, 1), 28 * S.u, y - 28 * S.u, { font: 'Oswald', fontFixed: true, weight: 700, size: 36, color: '#ffffff', align: 'left', anim: 'fade', delay: 0.4, upper: true, spacing: 0.06 });
+  animText(ctx, S, tx(S, 1), 28 * S.u, y - 28 * S.u, { ...tagO, color: '#ffffff', align: 'left', anim: 'fade', delay: 0.4, maxWidth: tagCap / S.W });
   animText(ctx, S, tx(S, 0), 40 * S.u, y + h / 2, { font: 'Oswald', weight: 400, size: 46, color: col(S, 0), align: 'left', anim: 'up', delay: 0.5, stagger: 0, inDur: 0.4, maxWidth: 0.92 });
   // live dot
   const blink = Math.floor(S.t * 2) % 2 ? 1 : 0.35;
@@ -253,14 +257,19 @@ L3('lt-handle', 'Social Handle', { texts: ['@yourchannel', 'Follow for more'], c
   animText(ctx, S, tx(S, 1), x + h + 8 * S.u, y + 28 * S.u, { font: 'Poppins', fontFixed: true, weight: 400, size: 26, color: 'rgba(255,255,255,0.75)', align: 'left', anim: 'fade', delay: 0.5 });
 });
 L3('lt-sports', 'Sports Stat', { texts: ['J. RIVERA', '#10 · 24 PTS · 8 AST'], colors: ['#ffffff', '#f77f00'], font: 'Bebas Neue' }, (ctx, S) => {
-  const x = lx(S), y = ly(S), h = 76 * S.u;
+  const x = lx(S), y = ly(S), h = 76 * S.u, u = S.u;
   const k = inout(S, 0, 0.4, 0.4, ease.outExpo);
+  const nO = { font: 'Bebas Neue', weight: 400, size: 72, spacing: 0.04 }, sO = { font: 'Bebas Neue', fontFixed: true, weight: 400, size: 42, spacing: 0.06 };
+  const cap = S.W * 0.88 - x;
+  const nw = Math.max(520 * u, Math.min(measure(ctx, S, tx(S, 0), nO).w, cap) + 34 * u + 40 * u);
+  const sw = Math.max(560 * u, Math.min(measure(ctx, S, tx(S, 1), sO).w, cap) + 38 * u + 40 * u);
   ctx.save(); ctx.translate(x, y); ctx.transform(1, 0, -0.25, 1, 0, 0);
-  growRect(ctx, 0, -h, 520 * S.u, h, k, 'l', col(S, 1));
-  growRect(ctx, 20 * S.u, 0, 560 * S.u, h * 0.8, inout(S, 0.15, 0.4, 0.4, ease.outExpo), 'l', '#121826');
+  growRect(ctx, 0, -h, nw, h, k, 'l', col(S, 1));
+  growRect(ctx, 20 * u, 0, sw, h * 0.8, inout(S, 0.15, 0.4, 0.4, ease.outExpo), 'l', '#121826');
   ctx.restore();
-  animText(ctx, S, tx(S, 0), x + 24 * S.u, y - h / 2, { font: 'Bebas Neue', weight: 400, size: 72, color: col(S, 0), align: 'left', anim: 'left', delay: 0.2, stagger: 0, inDur: 0.4, spacing: 0.04 });
-  animText(ctx, S, tx(S, 1), x + 38 * S.u, y + h * 0.4, { font: 'Bebas Neue', fontFixed: true, weight: 400, size: 42, color: col(S, 1), align: 'left', anim: 'fade', delay: 0.45, spacing: 0.06 });
+  // the bars lean right, so the words start a little in from their sloped left edge
+  animText(ctx, S, tx(S, 0), x + 34 * u, y - h / 2, { ...nO, color: col(S, 0), align: 'left', anim: 'left', delay: 0.2, stagger: 0, inDur: 0.4, maxWidth: cap / S.W });
+  animText(ctx, S, tx(S, 1), x + 38 * u, y + h * 0.4, { ...sO, color: col(S, 1), align: 'left', anim: 'fade', delay: 0.45, maxWidth: cap / S.W });
 });
 L3('lt-minimal-right', 'Right Aligned', { colors: ['#ffffff', '#ffffff'], font: 'Playfair Display' }, (ctx, S) => {
   const x = S.W - lx(S), y = ly(S);
@@ -348,15 +357,24 @@ def('Social', 'social-subscribe', 'Subscribe Button', { texts: ['SUBSCRIBE', 'SU
   }
 });
 def('Social', 'social-like', 'Like & Share', { texts: ['LIKE', 'SHARE', 'FOLLOW'], colors: ['#ffffff', '#ff4d6d'], dur: 4 }, (ctx, S) => {
-  const items = [['❤️', tx(S, 0)], ['🔁', tx(S, 1)], ['➕', tx(S, 2)]];
-  items.forEach(([emo, label], i) => {
-    const x = S.W / 2 + (i - 1) * 300 * S.u, y = S.H * 0.78;
+  // Each pill is as wide as its word; the row is centred and shrinks to fit the frame.
+  const u = S.u, items = [['❤️', tx(S, 0)], ['🔁', tx(S, 1)], ['➕', tx(S, 2)]];
+  const label = fontStr(S.font || 'Poppins', 800, 40 * u);
+  const h = 100 * u, padL = 30 * u, emo = 52 * u, gapE = 14 * u, padR = 38 * u, gap = 40 * u;
+  ctx.font = label;
+  const ws = items.map(([, l]) => padL + emo + gapE + ctx.measureText(l).width + padR);
+  const total = ws.reduce((a, b) => a + b, 0) + gap * (ws.length - 1);
+  const fit = Math.min(1, (S.W * 0.92) / total);
+  let left = S.W / 2 - (total * fit) / 2;
+  items.forEach(([e, l], i) => {
+    const w = ws[i], cx = left + (w * fit) / 2, y = S.H * 0.78;
+    left += (w + gap) * fit;
     const k = inout(S, i * 0.2, 0.5, 0.4, ease.outBack);
     if (k <= 0) return;
-    ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'; roundRect(ctx, -130 * S.u, -50 * S.u, 260 * S.u, 100 * S.u, 50 * S.u); ctx.fill();
-    ctx.font = fontStr('Noto Color Emoji', 400, 46 * S.u); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(emo, -70 * S.u, 2 * S.u);
-    ctx.font = fontStr(S.font || 'Poppins', 800, 40 * S.u); ctx.fillStyle = col(S, 0); ctx.textAlign = 'left'; ctx.fillText(label, -30 * S.u, 3 * S.u);
+    ctx.save(); ctx.translate(cx, y); ctx.scale(k * fit, k * fit);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; roundRect(ctx, -w / 2, -h / 2, w, h, h / 2); ctx.fill();
+    ctx.font = fontStr('Noto Color Emoji', 400, 46 * u); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(e, -w / 2 + padL + emo / 2, 2 * u);
+    ctx.font = label; ctx.fillStyle = col(S, 0); ctx.textAlign = 'left'; ctx.fillText(l, -w / 2 + padL + emo + gapE, 3 * u);
     ctx.restore();
   });
 });
@@ -427,10 +445,11 @@ def('Callouts', 'call-circle', 'Circle Highlight', { texts: ['Important'], color
 def('Callouts', 'call-step', 'Numbered Step', { texts: ['1', 'Open the settings'], colors: ['#ffffff', '#3a86ff'], font: 'Poppins' }, (ctx, S) => {
   const x = S.W * 0.08, y = S.H * 0.18, r = 56 * S.u;
   const k = inout(S, 0, 0.5, 0.4, ease.outBack);
-  if (k > 0) { ctx.save(); ctx.translate(x + r, y); ctx.scale(k, k); ctx.fillStyle = col(S, 1); ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = fontStr(S.font || 'Poppins', 900, 64 * S.u); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(tx(S, 0), 0, 4 * S.u); ctx.restore(); }
+  if (k > 0) { ctx.save(); ctx.translate(x + r, y); ctx.scale(k, k); ctx.fillStyle = col(S, 1); ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = fitFont(ctx, tx(S, 0), S.font || 'Poppins', 900, 64 * S.u, r * 1.5); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(tx(S, 0), 0, 4 * S.u); ctx.restore(); }
   const m = measure(ctx, S, tx(S, 1), { font: 'Poppins', weight: 700, size: 52 });
-  growRect(ctx, x + r * 2 + 16 * S.u, y - 50 * S.u, m.w + 60 * S.u, 100 * S.u, inout(S, 0.2, 0.5, 0.4, ease.outExpo), 'l', 'rgba(0,0,0,0.7)', 14 * S.u);
-  animText(ctx, S, tx(S, 1), x + r * 2 + 46 * S.u, y, { font: 'Poppins', weight: 700, size: 52, color: col(S, 0), align: 'left', anim: 'fade', delay: 0.45 });
+  const cap = S.W * 0.95 - (x + r * 2 + 46 * S.u) - 30 * S.u;
+  growRect(ctx, x + r * 2 + 16 * S.u, y - 50 * S.u, Math.min(m.w, cap) + 60 * S.u, 100 * S.u, inout(S, 0.2, 0.5, 0.4, ease.outExpo), 'l', 'rgba(0,0,0,0.7)', 14 * S.u);
+  animText(ctx, S, tx(S, 1), x + r * 2 + 46 * S.u, y, { font: 'Poppins', weight: 700, size: 52, color: col(S, 0), align: 'left', anim: 'fade', delay: 0.45, maxWidth: cap / S.W });
 });
 def('Callouts', 'call-speech', 'Speech Bubble', { texts: ['Hello there!'], colors: ['#111111', '#ffffff'], font: 'Bangers' }, (ctx, S) => {
   const cx = S.W * 0.65, cy = S.H * 0.3;
@@ -455,8 +474,8 @@ def('Callouts', 'call-sale', 'Sale Badge', { texts: ['50%', 'OFF'], colors: ['#f
   for (let i = 0; i < 40; i++) { const a = (i / 40) * Math.PI * 2; const r = i % 2 ? R * 0.88 : R; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
   ctx.closePath(); ctx.fill();
   ctx.fillStyle = col(S, 0); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = fontStr(S.font || 'Anton', 400, 110 * S.u); ctx.fillText(tx(S, 0), 0, -20 * S.u);
-  ctx.font = fontStr(S.font || 'Anton', 400, 54 * S.u); ctx.fillText(tx(S, 1), 0, 62 * S.u);
+  ctx.font = fitFont(ctx, tx(S, 0), S.font || 'Anton', 400, 110 * S.u, R * 1.45); ctx.fillText(tx(S, 0), 0, -20 * S.u);
+  ctx.font = fitFont(ctx, tx(S, 1), S.font || 'Anton', 400, 54 * S.u, R * 1.3); ctx.fillText(tx(S, 1), 0, 62 * S.u);
   ctx.restore();
 });
 def('Callouts', 'call-quote', 'Quote', { texts: ['The best way to predict the future is to create it.', 'PETER DRUCKER'], colors: ['#ffffff', '#ffd60a'], font: 'Playfair Display', dur: 7 }, (ctx, S) => {
@@ -547,7 +566,7 @@ def('Fun', 'fun-comic', 'Comic Burst', { texts: ['BOOM!'], colors: ['#ffd60a', '
   ctx.fillStyle = col(S, 1); ctx.strokeStyle = '#111'; ctx.lineWidth = 10 * S.u; ctx.beginPath();
   for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; const r = i % 2 ? R * 0.62 : R * (0.95 + hash(i) * 0.15); ctx.lineTo(Math.cos(a) * r * 1.3, Math.sin(a) * r); }
   ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
-  animText(ctx, S, tx(S, 0), cx, cy, { font: 'Bangers', weight: 400, size: 200, color: col(S, 0), anim: 'bounce', inDur: 0.6, stagger: 0.05, stroke: { color: '#111', width: 10 }, spacing: 0.05, outDur: 0.3 });
+  animText(ctx, S, tx(S, 0), cx, cy, { font: 'Bangers', weight: 400, size: 200, color: col(S, 0), anim: 'bounce', inDur: 0.6, stagger: 0.05, stroke: { color: '#111', width: 10 }, spacing: 0.05, outDur: 0.3, maxWidth: (R * 1.5) / S.W });
 });
 def('Fun', 'fun-sticker-text', 'Sticker Text', { texts: ['so cute!'], colors: ['#ff4d6d', '#ffffff'], font: 'Caveat' }, (ctx, S) => {
   ctx.save(); ctx.translate(S.W / 2, S.H / 2); ctx.rotate(-0.08); ctx.translate(-S.W / 2, -S.H / 2);
@@ -628,50 +647,7 @@ def('End Credits', 'end-see-you', 'See You Next Time', { texts: ['See you next t
 // ===================== Professional =====================
 // Calm, flat openers and closers for lessons and company videos. Each intro has a matching outro
 // with the same look. Every shape is its own movable piece, like the lines of text.
-const lerp = (a, b, k) => a + (b - a) * k;
-const kin = (S, delay, dur, e = ease.outCubic) => e(clamp((S.t - delay) / Math.max(dur, 0.001)));
-// 0 → 1 over [d − before, d − before + dur]: for exits measured back from the end of the clip.
-const kend = (S, before, dur, e = ease.inCubic) => e(clamp((S.t - (S.d - before)) / Math.max(dur, 0.001)));
 
-// A grid of dots that pop in one by one.
-function dots(c, S, x, y, cols, rows, gap, r, color, delay, step, alpha) {
-  c.fillStyle = color;
-  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
-    const k = ease.outBack(clamp((S.t - delay - (j * cols + i) * step) / 0.3));
-    if (k <= 0) continue;
-    c.globalAlpha = alpha * Math.min(1, k);
-    c.beginPath(); c.arc(x + i * gap, y + j * gap, r * k, 0, Math.PI * 2); c.fill();
-  }
-}
-// A rectangle outline drawn from the top middle down both sides at once; k = 0..1.
-// Both halves go into one path, so where they meet there is no doubled, brighter spot.
-function traceRect(c, x, y, w, h, k) {
-  const len = (w + h) * k, mx = x + w / 2;
-  const walk = (pts) => {
-    const out = [pts[0]];
-    let left = len;
-    for (let i = 1; i < pts.length && left > 0; i++) {
-      const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
-      const seg = Math.hypot(bx - ax, by - ay), f = Math.min(1, left / seg);
-      out.push([ax + (bx - ax) * f, ay + (by - ay) * f]);
-      left -= seg;
-    }
-    return out;
-  };
-  const right = walk([[mx, y], [x + w, y], [x + w, y + h], [mx, y + h]]);
-  const leftHalf = walk([[mx, y], [x, y], [x, y + h], [mx, y + h]]).reverse();
-  const pts = [...leftHalf, ...right.slice(1)];
-  c.beginPath(); c.moveTo(...pts[0]);
-  for (const p of pts.slice(1)) c.lineTo(...p);
-  c.stroke();
-}
-function checkBadge(c, x, y, r, k, fill, ink, u) {
-  if (k <= 0) return;
-  c.fillStyle = fill;
-  c.beginPath(); c.arc(x, y, r * k, 0, Math.PI * 2); c.fill();
-  c.strokeStyle = ink; c.lineWidth = 5 * u; c.lineCap = 'round'; c.lineJoin = 'round';
-  c.beginPath(); c.moveTo(x - r * 0.42 * k, y + r * 0.02); c.lineTo(x - r * 0.1 * k, y + r * 0.32 * k); c.lineTo(x + r * 0.45 * k, y - r * 0.3 * k); c.stroke();
-}
 
 // 1. Block Reveal: each line is uncovered by a solid block that sweeps across it and away,
 // and the blocks sweep back over the lines to take them off again at the end.
@@ -893,22 +869,6 @@ function bandsScene(ctx, S) {
 }
 
 
-// Shared: part of a polyline, drawn up to fraction k of its length.
-function polyPart(c, pts, k) {
-  const segs = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]));
-  let left = segs.reduce((a, b) => a + b, 0) * k;
-  c.beginPath(); c.moveTo(...pts[0]);
-  let end = pts[0];
-  for (let i = 0; i < segs.length && left > 0; i++) {
-    const f = Math.min(1, left / segs[i]);
-    end = [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * f, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * f];
-    c.lineTo(...end);
-    left -= segs[i];
-  }
-  c.stroke();
-  return end;
-}
-const still = (alpha = 1) => ({ anim: 'still', delay: 0, inDur: 0.001, outDur: 0.001, alpha });
 
 // 6. Lesson Agenda: a heading, then numbered steps appearing one by one along a line.
 //    The recap version ticks each step off instead.
@@ -1064,7 +1024,7 @@ function monogramScene(ctx, S, outro) {
     c.translate(cx, cy); c.rotate((1 - kb) * -Math.PI / 2); c.scale(k, k); c.translate(-cx, -cy);
     c.fillStyle = badge; roundRect(c, bx, by, bs, bs, bs * 0.26); c.fill();
     const ki = clamp((S.t - 0.3) / 0.3) * (outro ? 1 : fo);
-    if (ki > 0) drawText(c, S, tx(S, 0), cx, cy + 2 * u, { font: 'Montserrat', fontFixed: true, weight: 800, size: bs / u * 0.42, color: ini, align: 'center', upper: true, ...still(ki) });
+    if (ki > 0) drawText(c, S, tx(S, 0), cx, cy + 2 * u, { font: 'Montserrat', fontFixed: true, weight: 800, size: bs / u * 0.42, color: ini, align: 'center', upper: true, maxWidth: (bs * 0.78) / W, ...still(ki) });
   });
   // the name and tagline: on wide frames they slide out from behind the badge's right edge
   const reveal = (text, o, y, alpha) => (c) => {
@@ -1294,7 +1254,7 @@ function ltNumber(ctx, S) {
     const cx = x + tag / 2, cy = top + tag / 2;
     c.translate(cx, cy); c.scale(kt, kt); c.translate(-cx, -cy);
     c.fillStyle = col(S, 1); c.fillRect(x, top, tag, tag);
-    drawText(c, S, tx(S, 0), cx, cy + 2 * u, { font: 'Montserrat', fontFixed: true, weight: 900, size: 52, color: col(S, 2), align: 'center', ...still(1) });
+    drawText(c, S, tx(S, 0), cx, cy + 2 * u, { font: 'Montserrat', fontFixed: true, weight: 900, size: 52, color: col(S, 2), align: 'center', maxWidth: (tag * 0.78) / S.W, ...still(1) });
   });
   growRect(ctx, x + tag, top, w, hh, kin(S, 0.2, 0.45, ease.outExpo) * out, 'l', rgba(col(S, 4), 0.95));
   const tout = { outDur: 0.3, outEarly: 0.45 };
@@ -1323,7 +1283,7 @@ function ltMonogram(ctx, S) {
     const cx = x + bs / 2, cy = top + bs / 2;
     c.translate(cx, cy); c.rotate((1 - Math.min(1, kb)) * -Math.PI / 2); c.scale(kb, kb); c.translate(-cx, -cy);
     c.fillStyle = col(S, 0); roundRect(c, x, top, bs, bs, bs * 0.26); c.fill();
-    drawText(c, S, tx(S, 0), cx, cy + 2 * u, { font: 'Montserrat', fontFixed: true, weight: 800, size: bs / u * 0.4, color: col(S, 1), align: 'center', upper: true, ...still(1) });
+    drawText(c, S, tx(S, 0), cx, cy + 2 * u, { font: 'Montserrat', fontFixed: true, weight: 800, size: bs / u * 0.4, color: col(S, 1), align: 'center', upper: true, maxWidth: (bs * 0.78) / S.W, ...still(1) });
   });
 }
 
@@ -1358,19 +1318,9 @@ def('Professional', 'lt-pro-number', 'Chapter Lower Third', { texts: ['02', 'Wor
 def('Professional', 'lt-pro-monogram', 'Monogram Lower Third', { texts: ['YC', 'Alex Morgan', 'Head of Design'], brandTexts: { 0: 'initials' }, font: 'Montserrat', colors: ['#7c3aed', '#ffffff', '#111827', '#6b7280', '#ffffff'] }, ltMonogram);
 def('Professional', 'lt-pro-shutter', 'Shutter Lower Third', { texts: ['Jamie Fox', 'Event host'], font: 'Montserrat', colors: ['#1f2933', '#1f2933', '#3e4c59', '#e11d48', '#fdf6e3'] }, ltShutter);
 
-function wrap(ctx, S, text, family, weight, size, maxFrac) {
-  ctx.font = fontStr(S.font || family, weight, size * S.u * (S.scale || 1));
-  const words = String(text).split(/\s+/);
-  const lines = [];
-  let cur = '';
-  for (const w of words) {
-    const t = cur ? cur + ' ' + w : w;
-    if (ctx.measureText(t).width > S.W * maxFrac && cur) { lines.push(cur); cur = w; } else cur = t;
-  }
-  if (cur) lines.push(cur);
-  return lines.join('\n');
-}
 
+// The titles the Sequences are built from; they are found by id but are not listed in the Titles tab.
+TT.push(...SEQ_TITLES);
 export const TITLES = TT;
-export const TITLE_CATS = [...new Set(TT.map((t) => t.cat))];
+export const TITLE_CATS = [...new Set(TT.filter((t) => !t.seq).map((t) => t.cat))];
 export const titleById = (id) => TT.find((t) => t.id === id);
