@@ -121,7 +121,7 @@ try {
   await openMenu('Help');
   item('What’s new').click(); await wait(300);
   const rows = document.querySelectorAll('.news-row');
-  check(rows.length === 11 && [...rows].filter((r) => r.querySelector('button')).length >= 7, `What’s new lists ${rows.length} features, with buttons to open them`);
+  check(rows.length === 14 && [...rows].filter((r) => r.querySelector('button')).length >= 7, `What’s new lists ${rows.length} features, with buttons to open them`);
   await shot('nav-3-news');
   document.querySelector('.modal-f .btn').click(); await wait(100);
   await openMenu('Help');

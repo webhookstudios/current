@@ -3,7 +3,7 @@
 import {
   tx, col, kin, kend, lerp, frame, TY, sized, stack, pill, card, checkBadge, glyph, iconDisc, countUp, numOf, listOf,
   wrapO, measure, animText, drawText, piece, line, roundRect, growRect, traceRect, ease, clamp, rgba,
-  K, area, fo, header, para, column,
+  K, area, fo, header, para, column, TIMER, clock,
 } from './scenekit.js';
 
 const L = [];
@@ -290,10 +290,12 @@ function yourTurn(ctx, S) {
   ], 30 * u);
 }
 
-// Activity Timer: a large ring runs down round the time, with the activity above it.
+// Activity Timer: a real countdown. The clip's length is the time (typing a time in the timer box
+// sets it), the clock counts down to zero in real time while the ring runs out, then "Time's up!".
 function activityTimer(ctx, S) {
   const f = frame(S), u = f.u, k = K(S), { cw } = area(f), mw = cw / f.W;
   const R = (f.tall ? 230 : 190) * u;
+  const T = Math.max(1, S.d - TIMER.lead - TIMER.tail), left = T - clamp(S.t - TIMER.lead, 0, T), end = TIMER.lead + T, done = S.t >= end;
   const mT = measure(ctx, S, tx(S, 0), sized(TY.title, 72));
   const mC = para(ctx, S, tx(S, 2), 0, 0, TY.body, k.muted, mw, { draw: false });
   column(f, [
@@ -306,10 +308,12 @@ function activityTimer(ctx, S) {
         c.globalAlpha = fo(S);
         c.lineWidth = 22 * u; c.lineCap = 'round';
         c.strokeStyle = rgba(k.ink, 0.1); c.beginPath(); c.arc(cx, cy, R - 11 * u, 0, Math.PI * 2); c.stroke();
-        const left = kk * (1 - clamp((S.t - 1.0) / Math.max(1, S.d - 1.6)) * 0.85);
-        c.strokeStyle = k.acc; c.beginPath(); c.arc(cx, cy, R - 11 * u, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); c.stroke();
+        if (done) {
+          const kd = ease.outBack(clamp((S.t - end) / 0.4));
+          c.strokeStyle = k.acc2; c.lineWidth = 22 * u * Math.max(0.2, kd); c.beginPath(); c.arc(cx, cy, R - 11 * u, 0, Math.PI * 2); c.stroke();
+        } else if (left > 0) { c.strokeStyle = k.acc; c.beginPath(); c.arc(cx, cy, R - 11 * u, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * kk * (left / T)); c.stroke(); }
       });
-      animText(ctx, S, tx(S, 1), cx, cy, { ...sized(TY.num, f.tall ? 120 : 104), color: k.ink, anim: 'pop', delay: 0.5, stagger: 0, maxWidth: (R * 1.4) / f.W });
+      animText(ctx, S, done ? tx(S, 3) : clock(left), cx, cy, { ...sized(TY.num, done ? (f.tall ? 80 : 70) : f.tall ? 120 : 104), color: done ? k.acc2 : k.ink, anim: 'pop', delay: 0.5, stagger: 0, maxWidth: (R * 1.4) / f.W });
     }],
     [mC.h, (y) => para(ctx, S, tx(S, 2), f.W / 2, y, TY.body, k.muted, mw, { align: 'center', delay: 0.9, top: true })],
   ], 40 * u);
@@ -603,27 +607,17 @@ function location(ctx, S) {
   stack(ctx, S, items, x0, side ? f.H / 2 - h / 2 : my + mapH + (f.H - my - mapH) / 2 - h / 2, { maxW: tmw });
 }
 
-// Big Statistic: a huge number counts up beside ten dots that fill to match.
+// Big Statistic: a huge number counts up, then what it means and where it comes from.
 function bigStat(ctx, S) {
   const f = frame(S), u = f.u, k = K(S), { cw, x0 } = area(f), mw = cw / f.W;
   const no = { ...sized(TY.big, f.tall ? 220 : 240), fontFixed: true };
   const mN = measure(ctx, S, tx(S, 0), no), fit = Math.min(1, cw / mN.w), nH = mN.h * fit * 0.85;
-  const pct = clamp(numOf(tx(S, 0), 70) / 100), filled = Math.round(pct * 10);
   const mC = para(ctx, S, tx(S, 1), 0, 0, sized(TY.title, f.tall ? 56 : 60), k.ink, mw, { draw: false });
-  const r = 22 * u, gap = 62 * u;
   column(f, [
     [nH, (y) => animText(ctx, S, countUp(tx(S, 0), kin(S, 0.2, 1.6, ease.outQuart)), x0, y + nH / 2, { ...no, color: k.acc, align: 'left', anim: 'up', delay: 0.1, stagger: 0, maxWidth: mw })],
-    [r * 2, (y) => piece(ctx, { x: x0, y, w: gap * 9 + r * 2, h: r * 2 }, (c) => {
-      c.globalAlpha = fo(S);
-      for (let i = 0; i < 10; i++) {
-        const kk = ease.outBack(clamp((S.t - 0.4 - i * 0.12) / 0.3));
-        if (kk <= 0) continue;
-        c.fillStyle = i < filled ? k.acc : rgba(k.ink, 0.15);
-        c.beginPath(); c.arc(x0 + r + Math.min(gap, (cw - r * 2) / 9) * i, y + r, r * kk, 0, Math.PI * 2); c.fill();
-      }
-    })],
-    [mC.h, (y) => para(ctx, S, tx(S, 1), x0, y, sized(TY.title, f.tall ? 56 : 60), k.ink, mw, { delay: 1.0, anim: 'up', top: true })],
-    [34 * u, (y) => animText(ctx, S, tx(S, 2), x0, y + 17 * u, { ...TY.small, color: k.muted, align: 'left', anim: 'fade', delay: 1.6, maxWidth: mw })],
+    [10 * u, (y) => growRect(ctx, x0, y, Math.min(cw, 240 * u), 10 * u, kin(S, 0.6, 0.6, ease.inOutCubic), 'l', k.acc, 5 * u, fo(S))],
+    [mC.h, (y) => para(ctx, S, tx(S, 1), x0, y, sized(TY.title, f.tall ? 56 : 60), k.ink, mw, { delay: 0.8, anim: 'up', top: true })],
+    [34 * u, (y) => animText(ctx, S, tx(S, 2), x0, y + 17 * u, { ...TY.small, color: k.muted, align: 'left', anim: 'fade', delay: 1.4, maxWidth: mw })],
   ], 34 * u);
 }
 
@@ -693,6 +687,39 @@ function discuss(ctx, S) {
     [mQ.h, (y) => para(ctx, S, tx(S, 1), f.W / 2, y, sized(TY.title, f.tall ? 62 : 70), k.ink, mw, { align: 'center', delay: 0.7, anim: 'up', top: true })],
     [40 * u, (y) => animText(ctx, S, tx(S, 2), f.W / 2, y + 20 * u, { ...TY.body, color: k.muted, anim: 'fade', delay: 1.3, maxWidth: mw })],
   ], 30 * u);
+}
+
+// Exit Ticket: a ticket with a tear-off stub, two prompts with lines to write on, and what to do.
+function exitTicket(ctx, S) {
+  const f = frame(S), u = f.u, k = K(S), { cw, x0 } = area(f);
+  const side = !f.tall, stub = side ? 190 * u : 130 * u, pad = (side ? 54 : 44) * u;
+  const ix = side ? x0 + stub + pad : x0 + pad, iw = (side ? cw - stub : cw) - pad * 2, mw = iw / f.W;
+  const to = sized(TY.title, f.tall ? 60 : 66), mt = measure(ctx, S, wrapO(ctx, S, tx(S, 1), to, mw), to), rowH = 120 * u;
+  const bodyH = 30 * u + 18 * u + mt.h + 36 * u + rowH * 2, ch = (side ? 0 : stub) + pad * 2 + bodyH;
+  const mC = para(ctx, S, tx(S, 4), 0, 0, TY.body, k.muted, cw / f.W, { draw: false });
+  column(f, [
+    [ch, (y) => {
+      const ty = y + (side ? 0 : stub);
+      card(ctx, S, { x: x0, y, w: cw, h: ch }, { color: k.dark ? '#ffffff' : k.surf, delay: 0.1, r: 30, shadow: k.dark ? 0 : 28, inner: (c) => {
+        c.save(); roundRect(c, x0, y, cw, ch, 30 * u); c.clip();
+        c.fillStyle = k.acc; side ? c.fillRect(x0, y, stub, ch) : c.fillRect(x0, y, cw, stub); c.restore();
+        c.setLineDash([12 * u, 10 * u]); c.strokeStyle = rgba(k.dark ? '#1c2026' : k.ink, 0.35); c.lineWidth = 4 * u; c.beginPath();
+        if (side) { c.moveTo(x0 + stub, y + 20 * u); c.lineTo(x0 + stub, y + ch - 20 * u); } else { c.moveTo(x0 + 20 * u, y + stub); c.lineTo(x0 + cw - 20 * u, y + stub); }
+        c.stroke(); c.setLineDash([]);
+        glyph(c, 'pencil', side ? x0 + stub / 2 : x0 + cw / 2, side ? y + ch / 2 : y + stub / 2, 46 * u, k.on, 1, u);
+      } });
+      const ink = k.dark ? '#1c2026' : k.ink;
+      animText(ctx, S, tx(S, 0), ix, ty + pad + 15 * u, { ...TY.label, color: k.acc, align: 'left', anim: 'fade', delay: 0.4, maxWidth: mw });
+      animText(ctx, S, wrapO(ctx, S, tx(S, 1), to, mw), ix, ty + pad + 48 * u + mt.h / 2, { ...to, color: ink, align: 'left', anim: 'up', delay: 0.5, maxWidth: mw });
+      [0, 1].forEach((i) => {
+        const ry = ty + pad + 48 * u + mt.h + 36 * u + rowH * i, d = 0.9 + i * 0.4, r = 26 * u;
+        piece(ctx, { x: ix, y: ry + 30 * u - r, w: r * 2, h: r * 2 }, (c) => { const kk = ease.outBack(clamp((S.t - d) / 0.35)); if (kk <= 0) return; c.globalAlpha = fo(S); c.fillStyle = k.acc; c.beginPath(); c.arc(ix + r, ry + 30 * u, r * kk, 0, Math.PI * 2); c.fill(); drawText(c, S, String(i + 1), ix + r, ry + 32 * u, { ...sized(TY.num, 28), color: k.on, align: 'center', anim: 'still', delay: 0, inDur: 0.001, outDur: 0.001, alpha: Math.min(1, kk) }); });
+        animText(ctx, S, tx(S, 2 + i), ix + r * 2 + 22 * u, ry + 30 * u, { ...sized(TY.strong, 38), color: ink, align: 'left', anim: 'fade', delay: d + 0.1, maxWidth: (iw - r * 2 - 22 * u) / f.W });
+        line(ctx, ix + r * 2 + 22 * u, ry + 96 * u, ix + iw, ry + 96 * u, kin(S, d + 0.3, 0.6, ease.inOutCubic) * fo(S), rgba(ink, 0.22), 3 * u);
+      });
+    }],
+    [mC.h, (y) => para(ctx, S, tx(S, 4), f.W / 2, y, TY.body, k.muted, cw / f.W, { align: 'center', delay: 1.8, top: true })],
+  ], 40 * u);
 }
 
 // Quick Poll: a question and three answers whose bars fill to their share as the numbers count.
@@ -842,7 +869,7 @@ seq('tip', 'Tip', 'navy', { sfx: swipe, texts: ['Tip', 'Read the questions first
 seq('formula', 'Formula', 'chalk', { sfx: [['sfx-typing', 0.6]], texts: ['Formula', 'a² + b² = c²', 'The Pythagorean theorem, for any right triangle'] }, formula);
 seq('example', 'Worked Example', 'mint', { dur: 7, texts: ['Example', 'Solve 3x + 5 = 20', '3x = 20 − 5', '3x = 15', 'x = 5'] }, workedExample);
 seq('your-turn', 'Your Turn', 'sun', { sfx: pop, texts: ['Your turn', 'Try the three practice questions on page 42.', '5 minutes'] }, yourTurn);
-seq('timer', 'Activity Timer', 'navy', { sfx: [['sfx-tick', 0.5]], texts: ['Group activity', '03:00', 'Discuss with the people next to you'] }, activityTimer);
+seq('timer', 'Activity Timer', 'navy', { dur: TIMER.lead + 180 + TIMER.tail, timer: 1, sfx: [['sfx-tick', 0.5], ['sfx-ding', TIMER.lead + 180]], texts: ['Group activity', '03:00', 'Discuss with the people next to you', 'Time’s up!'] }, activityTimer);
 seq('vocab', 'Vocabulary', 'lilac', { sfx: [['sfx-swipe', 0.3], ['sfx-swipe', 1.2]], texts: ['Vocabulary', 'la biblioteca', 'the library', 'Spanish', 'English'] }, vocabulary);
 seq('compare', 'Compare Two', 'mint', { dur: 7, sfx: swipe, texts: ['Plant cells', 'Animal cells', 'Cell wall', 'Chloroplasts', 'One large vacuole', 'No cell wall', 'No chloroplasts', 'Small vacuoles'] }, (c, S) => compareTwo(c, S, false));
 seq('pros-cons', 'Pros and Cons', 'paper', { dur: 7, sfx: swipe, texts: ['Pros and cons', 'Pros', 'Cons', 'Cheap to run', 'Easy to learn', 'Works offline', 'Slow with big files', 'Few templates', 'No phone app'] }, (c, S) => compareTwo(c, S, true));
@@ -860,7 +887,7 @@ seq('progress', 'Module Progress', 'mint', { sfx: ding, texts: ['Module 2 of 5',
 seq('homework', 'Homework', 'paper', { sfx: pop, texts: ['Homework', 'Write a one-page summary of chapter 4.', 'Due Friday'] }, (c, S) => taskCard(c, S, 'pencil'));
 seq('reading', 'Reading', 'lilac', { sfx: pop, texts: ['Reading', 'Chapter 7: The Great Migration', 'Pages 112–130'] }, (c, S) => taskCard(c, S, 'book'));
 seq('discuss', 'Discuss', 'sun', { sfx: [['sfx-bubble', 0.1], ['sfx-bubble', 0.35]], texts: ['Discuss', 'Should homework be optional? Why or why not?', 'Talk it over with a partner for two minutes'] }, discuss);
-seq('poll', 'Quick Poll', 'navy', { dur: 7, sfx: swipe, texts: ['Quick poll', 'Which topic should we cover next?', 'Volcanoes', 'Oceans', 'Space', '48 32 20'] }, poll);
+seq('exit-ticket', 'Exit Ticket', 'sun', { dur: 7, sfx: pop, texts: ['Exit ticket', 'Before you go', 'One thing you learned today', 'One question you still have', 'Write your answers on a sticky note'] }, exitTicket);
 seq('blank', 'Fill in the Blank', 'chalk', { dur: 7, sfx: [['sfx-pop', 2.3]], texts: ['Fill in the blank', 'The capital of France is ___.', 'Paris'] }, fillBlank);
 seq('myth', 'Myth vs Fact', 'paper', { dur: 7, sfx: [['sfx-error', 1.2], ['sfx-ding', 2.1]], texts: ['Myth', 'We only use 10% of our brains.', 'Fact', 'We use almost all of our brain, just not all at once.'] }, mythFact);
 seq('cause', 'Cause and Effect', 'mint', { dur: 7, sfx: swipe, texts: ['Cause and effect', 'Cause', 'A week of heavy rain', 'Effect', 'Rivers flood the valley'] }, causeEffect);
@@ -868,5 +895,9 @@ seq('qotd', 'Question of the Day', 'lilac', { sfx: pop, texts: ['Question of the
 seq('summary', 'In Summary', 'navy', { dur: 7, sfx: swipe, texts: ['In summary', 'Energy can’t be made or destroyed', 'It changes from one form to another', 'Some is always lost as heat'] }, (c, S) => pointCards(c, S, 'summary'));
 seq('lab', 'Lab Activity', 'mint', { dur: 7, sfx: pop, texts: ['Lab activity', 'Make a simple volcano', 'Baking soda', 'Vinegar', 'Food colouring'] }, (c, S) => markRows(c, S, { icon: 'flask', mark: 'dot', boxed: true }));
 seq('remember', 'Remember This', 'sun', { sfx: pop, texts: ['Remember', 'Always show your working, even when the answer seems obvious.'] }, rememberNote);
+
+// Retired in 1.6 (its bars could not show a real class's answers); kept out of the library so
+// projects that already use it still show it.
+seq('poll', 'Quick Poll', 'navy', { retired: true, dur: 7, sfx: swipe, texts: ['Quick poll', 'Which topic should we cover next?', 'Volcanoes', 'Oceans', 'Space', '48 32 20'] }, poll);
 
 export const EDU_SEQS = L;

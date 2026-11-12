@@ -279,6 +279,77 @@ export function glyph(c, name, x, y, r, color, k = 1, u = 1) {
     case 'bars':
       c.fillRect(-R * 0.65, R * 0.05, R * 0.34, R * 0.6); c.fillRect(-R * 0.17, -R * 0.3, R * 0.34, R * 0.95); c.fillRect(R * 0.31, -R * 0.65, R * 0.34, R * 1.3);
       break;
+    // added in 1.6 for the News, Gaming and Travel sections
+    case 'plane':
+      c.beginPath(); c.moveTo(R * 0.85, 0); c.quadraticCurveTo(R * 0.85, -R * 0.12, R * 0.5, -R * 0.12); c.lineTo(R * 0.1, -R * 0.12); c.lineTo(-R * 0.25, -R * 0.8); c.lineTo(-R * 0.45, -R * 0.8); c.lineTo(-R * 0.25, -R * 0.12);
+      c.lineTo(-R * 0.6, -R * 0.12); c.lineTo(-R * 0.75, -R * 0.38); c.lineTo(-R * 0.88, -R * 0.38); c.lineTo(-R * 0.8, 0); c.lineTo(-R * 0.88, R * 0.38); c.lineTo(-R * 0.75, R * 0.38); c.lineTo(-R * 0.6, R * 0.12);
+      c.lineTo(-R * 0.25, R * 0.12); c.lineTo(-R * 0.45, R * 0.8); c.lineTo(-R * 0.25, R * 0.8); c.lineTo(R * 0.1, R * 0.12); c.lineTo(R * 0.5, R * 0.12); c.quadraticCurveTo(R * 0.85, R * 0.12, R * 0.85, 0); c.closePath(); c.fill();
+      break;
+    case 'sun':
+      c.beginPath(); c.arc(0, 0, R * 0.48, 0, Math.PI * 2); c.fill();
+      c.globalAlpha *= 0.35; c.beginPath(); c.arc(0, 0, R * 0.78, 0, Math.PI * 2); c.lineWidth = R * 0.14; c.stroke();
+      break;
+    case 'moon':
+      c.beginPath(); c.arc(0, 0, R * 0.62, 0, Math.PI * 2); c.fill();
+      c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.arc(R * 0.32, -R * 0.22, R * 0.5, 0, Math.PI * 2); c.fill();
+      break;
+    case 'cloud': case 'rain':
+      c.beginPath(); c.arc(-R * 0.35, R * 0.02, R * 0.32, 0, Math.PI * 2); c.arc(R * 0.05, -R * 0.2, R * 0.42, 0, Math.PI * 2); c.arc(R * 0.42, R * 0.05, R * 0.3, 0, Math.PI * 2); c.fill();
+      c.fillRect(-R * 0.35, R * 0.02, R * 0.77, R * 0.33);
+      if (name === 'rain') { c.lineWidth = R * 0.11; c.beginPath(); for (const dx of [-0.3, 0.05, 0.4]) { c.moveTo(R * dx, R * 0.52); c.lineTo(R * (dx - 0.1), R * 0.82); } c.stroke(); }
+      break;
+    case 'camera':
+      roundRect(c, -R * 0.8, -R * 0.45, R * 1.6, R * 1.05, R * 0.18); c.fill(); c.fillRect(-R * 0.3, -R * 0.62, R * 0.6, R * 0.2);
+      c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.arc(0, R * 0.08, R * 0.34, 0, Math.PI * 2); c.fill();
+      c.globalCompositeOperation = 'source-over'; c.beginPath(); c.arc(0, R * 0.08, R * 0.2, 0, Math.PI * 2); c.fill();
+      break;
+    case 'trophy':
+      c.beginPath(); c.moveTo(-R * 0.5, -R * 0.7); c.lineTo(R * 0.5, -R * 0.7); c.lineTo(R * 0.45, -R * 0.1); c.quadraticCurveTo(R * 0.35, R * 0.28, 0, R * 0.3); c.quadraticCurveTo(-R * 0.35, R * 0.28, -R * 0.45, -R * 0.1); c.closePath(); c.fill();
+      c.lineWidth = R * 0.12; c.beginPath(); c.arc(-R * 0.5, -R * 0.38, R * 0.22, Math.PI * 0.5, Math.PI * 1.5); c.stroke(); c.beginPath(); c.arc(R * 0.5, -R * 0.38, R * 0.22, -Math.PI * 0.5, Math.PI * 0.5); c.stroke();
+      c.fillRect(-R * 0.09, R * 0.28, R * 0.18, R * 0.3); c.fillRect(-R * 0.38, R * 0.56, R * 0.76, R * 0.16);
+      break;
+    case 'key':
+      c.lineWidth = R * 0.16; c.beginPath(); c.arc(-R * 0.42, 0, R * 0.3, 0, Math.PI * 2); c.stroke();
+      c.fillRect(-R * 0.14, -R * 0.08, R * 0.95, R * 0.16); c.fillRect(R * 0.5, 0, R * 0.14, R * 0.3); c.fillRect(R * 0.72, 0, R * 0.12, R * 0.24);
+      break;
+    case 'suitcase':
+      roundRect(c, -R * 0.75, -R * 0.4, R * 1.5, R * 1.1, R * 0.16); c.fill();
+      c.lineWidth = R * 0.13; roundRect(c, -R * 0.3, -R * 0.72, R * 0.6, R * 0.38, R * 0.1); c.stroke();
+      c.globalCompositeOperation = 'destination-out'; c.fillRect(-R * 0.45, -R * 0.4, R * 0.1, R * 1.1); c.fillRect(R * 0.35, -R * 0.4, R * 0.1, R * 1.1);
+      break;
+    case 'gamepad':
+      c.beginPath(); c.moveTo(-R * 0.55, -R * 0.38); c.lineTo(R * 0.55, -R * 0.38); c.quadraticCurveTo(R * 0.92, -R * 0.38, R * 0.95, R * 0.25); c.quadraticCurveTo(R * 0.98, R * 0.62, R * 0.65, R * 0.55); c.lineTo(R * 0.4, R * 0.25);
+      c.lineTo(-R * 0.4, R * 0.25); c.lineTo(-R * 0.65, R * 0.55); c.quadraticCurveTo(-R * 0.98, R * 0.62, -R * 0.95, R * 0.25); c.quadraticCurveTo(-R * 0.92, -R * 0.38, -R * 0.55, -R * 0.38); c.closePath(); c.fill();
+      c.globalCompositeOperation = 'destination-out';
+      c.fillRect(-R * 0.62, -R * 0.06, R * 0.36, R * 0.12); c.fillRect(-R * 0.5, -R * 0.18, R * 0.12, R * 0.36);
+      for (const [bx, by] of [[0.42, -0.1], [0.6, 0.06]]) { c.beginPath(); c.arc(R * bx, R * by, R * 0.08, 0, Math.PI * 2); c.fill(); }
+      break;
+    case 'bolt':
+      c.beginPath(); c.moveTo(R * 0.15, -R * 0.85); c.lineTo(-R * 0.5, R * 0.1); c.lineTo(-R * 0.02, R * 0.1); c.lineTo(-R * 0.15, R * 0.85); c.lineTo(R * 0.5, -R * 0.12); c.lineTo(R * 0.02, -R * 0.12); c.closePath(); c.fill();
+      break;
+    case 'mountain':
+      c.beginPath(); c.moveTo(-R * 0.9, R * 0.6); c.lineTo(-R * 0.2, -R * 0.55); c.lineTo(R * 0.15, 0); c.lineTo(R * 0.4, -R * 0.3); c.lineTo(R * 0.9, R * 0.6); c.closePath(); c.fill();
+      break;
+    case 'bowl':
+      c.beginPath(); c.moveTo(-R * 0.8, -R * 0.05); c.lineTo(R * 0.8, -R * 0.05); c.quadraticCurveTo(R * 0.75, R * 0.62, 0, R * 0.62); c.quadraticCurveTo(-R * 0.75, R * 0.62, -R * 0.8, -R * 0.05); c.fill();
+      c.lineWidth = R * 0.1; c.beginPath(); c.moveTo(-R * 0.2, -R * 0.25); c.quadraticCurveTo(-R * 0.35, -R * 0.5, -R * 0.15, -R * 0.75); c.moveTo(R * 0.2, -R * 0.25); c.quadraticCurveTo(R * 0.05, -R * 0.5, R * 0.25, -R * 0.75); c.stroke();
+      break;
+    case 'train': case 'bus':
+      roundRect(c, -R * 0.6, -R * 0.75, R * 1.2, R * 1.3, R * (name === 'bus' ? 0.15 : 0.35)); c.fill();
+      c.fillRect(-R * 0.45, R * 0.55, R * 0.2, R * 0.25); c.fillRect(R * 0.25, R * 0.55, R * 0.2, R * 0.25);
+      c.globalCompositeOperation = 'destination-out'; c.fillRect(-R * 0.45, -R * 0.55, R * 0.9, R * 0.5);
+      for (const dx of [-0.32, 0.32]) { c.beginPath(); c.arc(R * dx, R * 0.25, R * 0.1, 0, Math.PI * 2); c.fill(); }
+      break;
+    case 'play': c.beginPath(); c.moveTo(-R * 0.35, -R * 0.55); c.lineTo(R * 0.6, 0); c.lineTo(-R * 0.35, R * 0.55); c.closePath(); c.fill(); break;
+    case 'eye':
+      c.beginPath(); c.moveTo(-R * 0.85, 0); c.quadraticCurveTo(0, -R * 0.75, R * 0.85, 0); c.quadraticCurveTo(0, R * 0.75, -R * 0.85, 0); c.fill();
+      c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.arc(0, 0, R * 0.3, 0, Math.PI * 2); c.fill();
+      c.globalCompositeOperation = 'source-over'; c.beginPath(); c.arc(0, 0, R * 0.16, 0, Math.PI * 2); c.fill();
+      break;
+    case 'mic':
+      roundRect(c, -R * 0.22, -R * 0.8, R * 0.44, R * 0.95, R * 0.22); c.fill();
+      c.lineWidth = R * 0.1; c.beginPath(); c.arc(0, -R * 0.15, R * 0.42, 0.15, Math.PI - 0.15); c.stroke(); c.fillRect(-R * 0.05, R * 0.28, R * 0.1, R * 0.35); c.fillRect(-R * 0.28, R * 0.6, R * 0.56, R * 0.1);
+      break;
     default: c.beginPath(); c.arc(0, 0, R * 0.5, 0, Math.PI * 2); c.fill();
   }
   c.restore();
@@ -293,6 +364,28 @@ export function iconDisc(ctx, S, name, x, y, r, bg, ink, delay = 0.2) {
     c.fillStyle = bg; c.beginPath(); c.arc(x, y, r * k, 0, Math.PI * 2); c.fill();
     glyph(c, name, x, y, r * 0.62, ink, Math.min(1, k), u);
   });
+}
+
+// ---------- timers ----------
+// A countdown runs for the clip's length minus a short lead-in and a "time's up" tail.
+export const TIMER = { lead: 1, tail: 2.5 };
+// Seconds as "03:00", or "1:05:00" past an hour (rounded up, the way countdowns show it).
+export function clock(sec) {
+  const s = Math.max(0, Math.ceil(sec - 1e-6)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  const p2 = (n) => String(n).padStart(2, '0');
+  return h ? `${h}:${p2(m)}:${p2(x)}` : `${p2(m)}:${p2(x)}`;
+}
+// A typed time in seconds: "3:00", "1:30:00", "90s", "5 min", "2m 30s", or a plain "5" for minutes.
+export function parseClock(text) {
+  const s = String(text).trim().toLowerCase();
+  let m = /^(\d+):(\d{1,2})(?::(\d{1,2}))?$/.exec(s);
+  if (m) return m[3] != null ? +m[1] * 3600 + +m[2] * 60 + +m[3] : +m[1] * 60 + +m[2];
+  let total = 0, any = false;
+  for (const [, n, unit] of s.matchAll(/(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)(?![a-z])/g)) {
+    any = true; total += unit[0] === 'h' ? +n * 3600 : unit[0] === 'm' ? +n * 60 : +n;
+  }
+  if (any) return total;
+  return /^\d+(\.\d+)?$/.test(s) ? +s * 60 : null;
 }
 
 // ---------- sequence layout: colours, columns, headers ----------
@@ -327,6 +420,38 @@ export function para(ctx, S, text, x, y, o, color, maxW, { align = 'left', delay
   const m = measure(ctx, S, t, o);
   if (draw) animText(ctx, S, t, x, top ? y + m.h / 2 : y, { ...o, color, align, maxWidth: maxW, anim, delay, inDur: 0.5, stagger: anim === 'fade' ? 0 : 0.006 });
   return m;
+}
+// A block of lines drawn from the top, measured first: text items { text, o, color, gap, anim, delay,
+// wrap (default true), extra } and pill items { pill: text, o, bg, ink, h, r, delay, gap }.
+// Returns { h, draw(x, y, align) }; align 'left' starts at x, 'center' centres on x.
+export function block(ctx, S, items, tw) {
+  const u = S.u, rows = [];
+  let h = 0;
+  for (const it of items) {
+    const text = it.pill ?? it.text;
+    if (text == null || text === '') continue;
+    const gap = rows.length ? (it.gap ?? 18) * u : 0;
+    if (it.pill != null) { const ph = (it.h || 54) * u; rows.push({ it, y: h + gap, ph }); h += gap + ph; continue; }
+    const t = it.wrap === false ? text : wrapO(ctx, S, text, it.o, tw / S.W);
+    const m = measure(ctx, S, t, it.o), th = m.h * (m.w > tw ? tw / m.w : 1);
+    rows.push({ it, t, y: h + gap, th }); h += gap + th;
+  }
+  return { h, draw: (x, y, align = 'left') => rows.forEach((r, i) => {
+    const it = r.it;
+    if (it.pill != null) pill(ctx, S, it.pill, x, y + r.y + r.ph / 2, { o: it.o || TY.label, bg: it.bg, ink: it.ink, delay: it.delay ?? 0.2, align, h: it.h || 54, r: it.r, padX: it.padX, maxW: tw });
+    else animText(ctx, S, r.t, x, y + r.y + r.th / 2, { ...it.o, color: it.color, align, maxWidth: tw / S.W, anim: it.anim || 'up', delay: it.delay ?? 0.2 + i * 0.15, inDur: it.inDur ?? 0.5, stagger: it.stagger ?? (it.anim && it.anim !== 'up' ? 0 : 0.01), ...(it.extra || {}) });
+  }) };
+}
+// A picture beside a block of text, or above it on tall frames. vw/vh: the picture's size; items(tw)
+// gives the text block for a width; vis(cx, cy) draws the picture centred there. right puts the
+// picture on the right on wide frames.
+export function beside(ctx, S, f, { vw, vh, gap = 90, right = false, tallGap }, items, vis) {
+  const { cw, x0 } = area(f), u = f.u, g = gap * u, side = !f.tall && cw - vw - g >= cw * 0.4;
+  const tw = side ? cw - vw - g : cw, b = block(ctx, S, items(tw), tw);
+  if (side) {
+    vis(right ? x0 + cw - vw / 2 : x0 + vw / 2, f.H / 2);
+    b.draw(right ? x0 : x0 + vw + g, f.H / 2 - b.h / 2, 'left');
+  } else column(f, [[vh, (y) => vis(f.W / 2, y + vh / 2)], [b.h, (y) => b.draw(f.W / 2, y, 'center')]], (tallGap ?? gap * 0.6) * u);
 }
 // A column of blocks, centred in the frame height: blocks = [height, draw(y)].
 export function column(f, blocks, gap, mid = f.H / 2) {

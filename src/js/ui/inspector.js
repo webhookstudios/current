@@ -1,7 +1,8 @@
 // Right panel: properties of the selected clip, transition, or the project.
 import { h, icon, fmtDur, clamp, FONTS } from '../util.js';
 import { store, selectedClips, clipById, checkpoint, changed, edit, mediaById, clampClip, ASPECTS, defaultColor, defaultTransform, prevAdjacent } from '../state.js';
-import { app, setSpeed, detachAudio } from '../actions.js';
+import { app, setSpeed, detachAudio, retimeTimer } from '../actions.js';
+import { TIMER, clock, parseClock } from '../templates/scenekit.js';
 import { titleById } from '../templates/titles.js';
 import { elementById, backgroundById } from '../templates/elements.js';
 import { EFFECTS, FILTERS, effectById, filterById } from '../templates/effects.js';
@@ -363,13 +364,22 @@ function textTab(c) {
   const p = c.params;
   p.texts ||= [...(tpl?.texts || [])];
   p.colors ||= [...(tpl?.colors || [])];
+  const runTime = () => clock(c.duration - TIMER.lead - TIMER.tail);
   const areas = p.texts.map((t, i) => {
-    const ta = h('textarea', { rows: Math.min(6, Math.max(2, t.split('\n').length + 1)), value: t });
+    // A countdown's time box shows the clip's real length and sets it when you leave the box.
+    const timer = i === tpl?.timer;
+    const ta = h('textarea', { rows: timer ? 1 : Math.min(6, Math.max(2, t.split('\n').length + 1)), value: timer ? runTime() : t });
     let started = false;
     ta.addEventListener('focus', () => { started = false; });
     ta.addEventListener('input', () => { if (!started) { checkpoint(); started = true; } p.texts[i] = ta.value; changed('drag'); app.player.requestRender(); });
-    ta.addEventListener('blur', () => { if (started) changed(); });
-    return h('div', { style: { marginBottom: '8px' } }, h('div.hint', { style: { marginBottom: '4px' } }, i === 0 ? 'Main text' : `Text ${i + 1}`), ta);
+    ta.addEventListener('blur', () => {
+      if (!started) return;
+      if (timer) { const secs = parseClock(ta.value); if (secs != null) retimeTimer(c, secs); ta.value = p.texts[i] = runTime(); }
+      changed();
+    });
+    if (timer) ta.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ta.blur(); } });
+    return h('div', { style: { marginBottom: '8px' } }, h('div.hint', { style: { marginBottom: '4px' } }, timer ? 'Timer length' : i === 0 ? 'Main text' : `Text ${i + 1}`), ta,
+      timer ? h('div.hint', { style: { marginTop: '4px' } }, 'Type a time like 1:00, 5:00 or 10 min. The clock counts down in real time, the clip grows or shrinks to match, and anything after it moves along.') : null);
   });
   return [
     section('Text', ...areas, h('div.hint', 'Press Enter for a new line.')),
@@ -382,7 +392,7 @@ function textTab(c) {
       ...p.colors.map((col, i) => colorRow({ label: i === 0 ? 'Main colour' : i === 1 ? 'Accent' : `Colour ${i + 1}`, value: col, onStart: checkpoint, onInput: (v) => { p.colors[i] = v; changed('drag'); app.player.requestRender(); }, onChange: () => changed() })),
       h('div.row', h('label', 'Presets'), h('div.chips', [['#ffffff', '#ff4d6d'], ['#111111', '#ffd60a'], ['#ffffff', '#1fd1b9'], ['#fff6e5', '#c9a227'], ['#ffffff', '#3a86ff']].map((pair) =>
         h('button.chip-btn', { style: { background: `linear-gradient(90deg, ${pair[0]} 50%, ${pair[1]} 50%)`, width: '34px', height: '22px', padding: 0 }, onclick: () => edit(() => { p.colors = pair.concat(p.colors.slice(2)); }) }))))),
-    section('Duration', slider({ label: 'Length', min: 0.5, max: 60, step: 0.1, value: c.duration, unit: 's', ...live((v) => { c.duration = v; clampClip(c); }) })),
+    section('Duration', slider({ label: 'Length', min: 0.5, max: tpl?.timer != null ? Math.max(3 * 3600 + 4, c.duration) : 60, step: 0.1, value: c.duration, unit: 's', ...live((v) => { c.duration = v; clampClip(c); }) })),
   ];
 }
 

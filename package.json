@@ -1,7 +1,7 @@
 {
   "name": "current",
   "productName": "Current",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "A template-rich video editor for Ubuntu",
   "main": "main.js",
   "desktopName": "io.github.webhookstudios.Current.desktop",

@@ -11,17 +11,17 @@ A video editor built around ready-made templates. Drag animated titles, transiti
 | Library | Count | Examples |
 |---|---|---|
 | Starter templates | 12 | YouTube vlog, travel montage, travel highlights, product promo, tutorial, podcast clip (1:1), reel/short (9:16), birthday, family memories, gaming highlights, wedding, year in review |
-| Sequences | 160 | Ready-made pieces built from separate clips, so every text, number and piece can be edited and moved. **Intros** and **Outros** (40 each), including fifteen professional pairs where each intro has a matching outro: Block Reveal, Lesson Opener, Side Panel, Line Frame, Bold Bands, Chart Rise, Chapter Number, Monogram, Shutter, and six charts (Line Climb, Donut Fill, Big Number, Stacked Columns, Ranking Bars, Milestone Timeline). **Education** mid-rolls (40): Lesson Agenda and Recap, Key Term, Quick Quiz, True or False, Pause and Think, Step by Step, Formula, Worked Example, Vocabulary, Compare Two, Timeline, Poll, Fill in the Blank, Myth vs Fact and more. **Professional** mid-rolls (40): Big Number, Quarterly Bars, Growth Line, Market Share, KPI Dashboard, Sales Funnel, Before / After, Roadmap, Team Member, Customer Quote, Pricing Plans, Org Chart, SWOT, Event Date, Q&A Break and more |
+| Sequences | 280 | Ready-made pieces built from separate clips, so every text, number and piece can be edited and moved. **Intros** and **Outros** (40 each), including fifteen professional pairs where each intro has a matching outro: Block Reveal, Lesson Opener, Side Panel, Line Frame, Bold Bands, Chart Rise, Chapter Number, Monogram, Shutter, and six charts (Line Climb, Donut Fill, Big Number, Stacked Columns, Ranking Bars, Milestone Timeline). **Education** mid-rolls (40): Lesson Agenda and Recap, Key Term, Quick Quiz, True or False, Step by Step, Formula, Worked Example, Activity Timer (a real countdown for any length), Exit Ticket, Fill in the Blank, Myth vs Fact and more. **Professional** mid-rolls (40): Big Number, Before / After, Roadmap, Team Member, Customer Quote, Pricing Plans, FAQ, Do’s and Don’ts, Action Items, Why Choose Us, Visit Us, Special Offer, SWOT, Event Date and more, none with charts that would need real company numbers. **News**, **Gaming** and **Travel** (40 each): ten intros with matching outros and twenty mid-rolls in each, from Breaking Bulletin, Weather Forecast and Fact Check to Press Start, Patch Notes and Tier List, and Boarding Pass, Packing List and Local Phrase |
 | Titles | 105 | Openers, professional (with a matching lower third for each professional style), lower thirds, subtitles (incl. word highlight), social, callouts, quotes, countdowns, end credits |
 | Transitions | 85 | Dissolves, dips, wipes, slides, whip pans, zooms, spins, 3D cube/flip/page turn, glitch, film burn, light leak, shapes |
 | Effects | 55 | Blur, tilt shift, fisheye, VHS, old film, CRT, glitch, comic book, shake, mirror, kaleidoscope, rain, snow, dreamy glow |
 | Filters | 50 | Cinematic, film stocks, vintage, black & white, moods, food & travel |
 | Stickers | 100 | Animated emoji, 20 annotations (circles, highlighter, tooltips, star rating, spotlight…), 15 arrows (straight, double, block, elbow, U-turn, rotate, curved, neon, rainbow, sparkle trail…), confetti, frames |
 | Backgrounds | 78 | Solid colours (incl. green/blue screen), gradients, radial glows, animated, patterns, scenes and textures |
-| Audio | 50 | 20 music beds and 30 sound effects, generated on first use |
+| Audio | 80 | 50 music tracks and 30 sound effects, generated on first use |
 | Fonts | 22 | Bundled display and script fonts for titles |
 
-Every card animates when you hover over it, and the **+** button adds it at the playhead. Hover a music, sound or video card and press play to hear it first.
+Every card animates when you hover over it, and the **+** button adds it at the playhead. Hover a music, sound or video card and press play to hear it first. Click the star on any card in Audio, Sequences, Titles, Transitions, Effects, Filters or Stickers to keep it in that tab’s **Favorites** group.
 
 New projects start blank. The start screen also offers the 12 starter templates; pick one and drop your own clips onto its “Your clip” blocks.
 
@@ -80,10 +80,10 @@ Current has only been tested on Ubuntu 26.04.
 
 ### With the deb package (recommended)
 
-Download `current_1.5.0_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
+Download `current_1.6.0_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
 
 ```bash
-sudo apt install ./current_1.5.0_amd64.deb
+sudo apt install ./current_1.6.0_amd64.deb
 ```
 
 Open **Current** from the apps menu. To remove it:
@@ -116,8 +116,9 @@ Or run it straight from the checkout with `npm start`.
 | Edit a clip | Select it and use the panel on the right, or right-click it (or open the **Clip** menu) for everything you can do to it |
 | Crop a clip | Select it, open **Crop**, and drag the handles in the preview |
 | Key out a green screen | Put the clip on a track above the background, crop off anything the screen does not cover, then **Green Screen → Remove background colour** |
-| Add an intro or outro | Open **Sequences** and click **+** (intros go first, outros go last) |
-| Add a mid-roll | Put the playhead where it should go, open **Sequences › Education** or **Professional** and click **+**: the clip under the playhead is split and everything after it moves along. Chart values and numbers are text you can edit |
+| Add an intro or outro | Open **Sequences** and click **+** (intros go first, outros go last). In News, Gaming and Travel they sit under their own headings |
+| Add a mid-roll | Put the playhead where it should go, open **Sequences › Education**, **Professional**, or a mid-roll in **News**, **Gaming** or **Travel**, and click **+**: the clip under the playhead is split and everything after it moves along |
+| Set a countdown | Add **Sequences › Education › Activity Timer**, select its title and type a time in **Timer length** (like 1:00, 5:00 or 10 min): it counts down in real time and anything after it moves along |
 | Record a voiceover | Put the playhead where it should start, press **R** (or **Tools › Record voiceover**, or the microphone button above the timeline), pick your microphone, then **Start recording**. Press **Stop recording** or Space when you're done |
 | Record your screen | Press **Shift+R** (or **Tools › Record screen**), choose a webcam and microphone, press **Start recording**, then pick the screen or window |
 | Add captions | **Tools › Generate captions**, choose the language and style, and how to show them; fix any line in **Tools › Edit captions** |
@@ -151,7 +152,7 @@ The package is written to `dist/`. It bundles Electron, so it is about 95 MB.
 npx electron . --selftest=tests/smoke.js
 ```
 
-Further tests: `tests/navigation.js` (menus, toolbar, hover tips and right-click items), `tests/text-fit.js` (every title, sticker and sequence keeps its text inside its bubble, also with longer words), `tests/brand.js`, `tests/audio-tools.js` (ducking and Remove pauses, measured on generated sound), `tests/zoom-shape.js`, `tests/pro-packs.js` and `tests/pro-ui.js`. Screen recording and captions use simulated devices and a ready-made transcript:
+Further tests: `tests/navigation.js` (menus, toolbar, hover tips and right-click items), `tests/text-fit.js` (every title, sticker and sequence keeps its text inside its bubble, also with longer words), `tests/brand.js`, `tests/audio-tools.js` (ducking and Remove pauses, measured on generated sound), `tests/zoom-shape.js`, `tests/pro-packs.js`, `tests/pro-ui.js`, `tests/favorites.js` (stars and Favorites groups) and `tests/sections.js` (News, Gaming and Travel headings, where + puts each kind, and the countdown’s time box). Screen recording and captions use simulated devices and a ready-made transcript:
 
 ```bash
 CURRENT_RECORDING_DIR=tests/out/recordings npx electron . --selftest=tests/screenrec.js --use-fake-device-for-media-stream

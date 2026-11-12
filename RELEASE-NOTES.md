@@ -1,40 +1,32 @@
-# Current 1.5.0
+# Current 1.6.0
 
-The Intro/Outro tab is now **Sequences**, with 160 ready-made pieces: 40 intros, 40 outros, and 80 new mid-rolls for the middle of a video.
+Three new groups in the Sequences tab, 30 more music tracks, Favorites in every library tab, and a real countdown timer.
 
-**Mid-rolls**
+**News, Gaming and Travel sequences**
 
-- **Education (40):** Lesson Agenda and Lesson Recap moved here, joined by Key Term, Quick Quiz, True or False, Pause and Think, Did You Know?, Fun Fact, Step by Step, Common Mistake, Tip, Formula, Worked Example, Your Turn, Activity Timer, Vocabulary, Compare Two, Pros and Cons, Timeline, Recap So Far, Up Next, Section Break, Learning Objectives, Checklist, Quote, Diagram Labels, Location, Big Statistic, Module Progress, Homework, Reading, Discuss, Quick Poll, Fill in the Blank, Myth vs Fact, Cause and Effect, Question of the Day, In Summary, Lab Activity and Remember This.
-- **Professional (40):** Big Number, Quarterly Bars, Growth Line, Market Share, KPI Dashboard, Sales Funnel, Before / After, Problem → Solution, Three Pillars, Process Steps, Roadmap, Team Member, Customer Quote, Case Study, Feature Spotlight, What’s Included, Comparison Table, Pricing Plans, Org Chart, SWOT, Market Size, Survey Result, Our Offices, Our Partners, Announcement, Event Date, Q&A Break, Section Divider, Agenda Checkpoint, Mission Statement, Our Values, Award, We’re Hiring, Contact Us, Call to Action, Revenue Mix, Year over Year, Goal Progress, Key Takeaways and Milestone Reached.
-- **Placement:** click **+** on a mid-roll and it goes in at the playhead. The clip under the playhead is split and everything after it moves along, so nothing is covered.
-- **Editable numbers:** quiz answers, poll results, chart values and counters are all text you can change. The charts redraw to match.
+- **40 pieces in each group:** ten intros, each with a matching outro, and twenty mid-rolls. They are listed under their own headings (Intros, Mid-rolls, Outros), and **+** puts each one in the right place: intros at the start, mid-rolls at the playhead, outros at the end.
+- **News:** Newsroom Globe, Breaking Bulletin, Morning Show, Special Report, Live Desk, Weekly Roundup and more, with mid-rolls such as Breaking Banner (with a ticker), Top Stories, Weather Forecast, On the Scene, Fact Check, Interview, How It Happened, Traffic Update, Sports Results and Statement.
+- **Gaming:** Press Start, Neon Grid, Level Up, Glitch Mode, Versus, Let’s Play, Loading Screen, Starting Soon, Boss Warning and more, with mid-rolls such as Achievement Unlocked, Patch Notes, Tier List, Controls, Loadout, Player Card, Quest Log, Speedrun Splits, Chat Highlights and Respawning.
+- **Travel:** Passport Stamp, Boarding Pass, Postcard, Flight Path, Road Trip, Compass, Map Unfold, Polaroids and more, with mid-rolls such as Destination, Packing List, Day Plan, Local Phrase, Daily Budget, Getting There, Time Difference, Hidden Gem, Photo Spot and Our Rating.
+- **Pictures follow the words:** weather icons, transport icons, clock hands, rating stars, quest ticks and traffic colours all change to match what you type.
 
-**Chart intros and outros**
+**Education and Professional**
 
-- **Six new pairs in the style of Chart Rise:** Line Climb, Donut Fill, Big Number, Stacked Columns, Ranking Bars and Milestone Timeline.
-- **Matching outros:** each intro has an outro where the chart winds back down.
+- **No more charts that can’t match your numbers.** Ten Professional pieces built on charts are replaced by general ones: FAQ, Do’s and Don’ts, Action Items, Why Choose Us, Work Cycle, Visit Us, Special Offer, Our Promise, Team Shout-out and Short Break.
+- **Quick Poll is replaced by Exit Ticket**, and Big Statistic no longer draws dots.
+- **Activity Timer is a real countdown.** Type any time in its Timer length box (like 1:00, 5:00 or 10 min). The clip becomes that long and counts down in real time, then shows “Time’s up!” with a chime. Anything after it moves along.
+- Projects that already use a replaced piece still show it.
 
-**Every sequence**
+**Favorites**
 
-- Works in 16:9, 9:16 and 1:1.
-- Picks up your brand kit's colours and font.
-- Lets you move every piece on its own.
+- Hover over anything in Audio, Sequences, Titles, Transitions, Effects, Filters or Stickers and click its star. Each of those tabs keeps a **Favorites** group, and your stars are kept between sessions.
 
-**Also in this release**
+**Music**
 
-- **Icon buttons:** Voiceover, Screen and Captions above the timeline are now plain icons, like the rest of the row.
-- **Hover tips on every button** above the timeline. A greyed-out button also says what to do first, such as "Select a video or photo first" for Crop. Split and Freeze frame grey out when there is no clip under the playhead.
-- **Tips are never cut off:** they float over everything and stay inside the window.
-- **Text stays inside its bubble:**
-  - Like & Share's pills now fit their words, so "Follow" no longer runs out.
-  - Bubbles grow with your words in Breaking News, Sports Stat and Numbered Step.
-  - Fixed shapes shrink the text evenly instead.
-- **Fading exits:** pills and bars fade out with their words instead of shrinking out from under them.
-- **A bigger app icon** that matches other apps in the dock and app grid.
-- **Search:** searching the Sequences tab now finds intros too.
+- **50 music tracks**, up from 20. The new ones include house, trap, reggae, waltz, a brass march, a lullaby, chiptune, drum and bass, bossa, blues, country, orchestral, mystery, soul, focus and meditation beds. The 30 sound effects are unchanged.
 
 Install:
 
 ```bash
-sudo apt install ./current_1.5.0_amd64.deb
+sudo apt install ./current_1.6.0_amd64.deb
 ```

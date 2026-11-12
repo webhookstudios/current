@@ -131,12 +131,23 @@ input[type=color]::-webkit-color-swatch { border: 0; border-radius: 4px; }
 .card .used { position: absolute; left: 5px; top: 5px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; }
 .card .add { position: absolute; right: 5px; top: 5px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); border: 0; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px #0007; }
 .card:hover .add { display: flex; }
+.card .fav { position: absolute; left: 5px; top: 5px; width: 24px; height: 24px; padding: 0; border-radius: 50%; background: #000a; color: #fff; border: 0; display: none; align-items: center; justify-content: center; cursor: pointer; }
+.card:hover .fav, .card .fav.on { display: flex; }
+.card .fav.on { color: #f3c969; }
+.card .fav.on svg { fill: currentColor; }
+.card .fav:hover { transform: scale(1.1); }
+.card .fav ~ .used { top: auto; bottom: 26px; }
+.lib-cat i { font-style: normal; display: flex; align-items: center; gap: 4px; }
+.lib-cat.fav-cat i .ic { color: #f3c969; }
 .card .add:hover { transform: scale(1.1); }
 .card.audio .thumb { aspect-ratio: auto; height: 64px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #133a35, #0f2230); }
 .card.audio .thumb .ic { color: var(--accent); }
 .card.missing .thumb { outline: 2px solid var(--danger); }
 .import-tile { aspect-ratio: 16/9; border: 1.5px dashed var(--line2); border-radius: 7px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--fg2); cursor: pointer; font-size: 12px; }
 .import-tile:hover { border-color: var(--accent); color: var(--accent); }
+.grid-head { grid-column: 1 / -1; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg2); margin: 6px 0 -4px; }
+.grid-head:first-child { margin-top: 0; }
+.grid-head span { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--fg3); }
 .empty-note { grid-column: 1 / -1; color: var(--fg3); text-align: center; padding: 30px 10px; line-height: 1.6; }
 .drop-glow { outline: 2px dashed var(--accent); outline-offset: -6px; }
 

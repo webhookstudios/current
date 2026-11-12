@@ -5,10 +5,12 @@
 //   kind: 'background' | 'title' | 'element' | 'audio'   (audio = library sound id)
 //   opts: { at, dur, x, y, scale, texts, colors, params }
 
-import { SEQ_PACKS } from './sequences.js';
+import { SEQ_PACKS, SECTION_CATS } from './sequences.js';
 
 const P = [];
-const pack = (cat, id, name, dur, layers) => P.push({ id, name, cat, dur, layers: layers.map(([kind, tid, o = {}]) => ({ kind, id: tid, ...o })) });
+// role: where + puts it. 'intro' at the start, 'outro' at the end, 'mid' at the playhead.
+const roleOf = (cat) => (cat === 'Intros' ? 'intro' : cat === 'Outros' ? 'outro' : 'mid');
+const pack = (cat, id, name, dur, layers, role = roleOf(cat)) => P.push({ id, name, cat, dur, role, layers: layers.map(([kind, tid, o = {}]) => ({ kind, id: tid, ...o })) });
 const intro = (id, name, dur, layers) => pack('Intros', `intro-${id}`, name, dur, layers);
 const outro = (id, name, dur, layers) => pack('Outros', `outro-${id}`, name, dur, layers);
 
@@ -95,8 +97,10 @@ pack('Education', 'edu-agenda', 'Lesson Agenda', 6, [['background', 'bg-white', 
 pack('Education', 'edu-recap', 'Lesson Recap', 6, [['background', 'bg-white', { colors: ['#f7f7fb'] }], ['title', 'pro-agenda-end'], ['audio', 'sfx-ding', { at: 1.5 }]]);
 SEQ_PACKS.filter(([c]) => c === 'Education').forEach((a) => pack(...a));
 SEQ_PACKS.filter(([c]) => c === 'Professional').forEach((a) => pack(...a));
+// Themed sections, each with its own intros, mid-rolls and outros.
+for (const sec of SECTION_CATS) SEQ_PACKS.filter(([c]) => c === sec).forEach((a) => pack(...a));
 
 export const PACKS = P;
-export const PACK_CATS = ['Intros', 'Outros', 'Education', 'Professional'];
+export const PACK_CATS = ['Intros', 'Outros', 'Education', 'Professional', ...SECTION_CATS];
 export const MIDROLL_CATS = ['Education', 'Professional'];
 export const packById = (id) => P.find((p) => p.id === id);

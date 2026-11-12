@@ -8,6 +8,7 @@ import { ELEMENTS, ELEMENT_CATS, BACKGROUNDS, BACKGROUND_CATS } from '../templat
 import { AUDIO_LIBRARY, AUDIO_CATS, libraryAudioPath } from '../templates/audiolib.js';
 import { thumbs } from '../engine/media.js';
 import { PACKS, PACK_CATS } from '../templates/packs.js';
+import { SECTION_CATS } from '../templates/sequences.js';
 import { insertItem, importPaths, app } from '../actions.js';
 import { drawPreview, makeThumbCanvas } from './previews.js';
 import { dnd } from './dnd.js';
@@ -25,6 +26,17 @@ export const TABS = [
 ];
 
 const state = { tab: 'media', cat: {}, q: '' };
+
+// ---------- favourites: starred items, kept between sessions, with their own category per tab ----------
+const FAV = 'Favorites', FAV_KEY = 'current.favorites';
+const favs = (() => { try { return new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')); } catch { return new Set(); } })();
+export const isFavorite = (kind, id) => favs.has(`${kind}:${id}`);
+export function toggleFavorite(kind, id) {
+  const k = `${kind}:${id}`;
+  if (favs.has(k)) favs.delete(k); else favs.add(k);
+  try { localStorage.setItem(FAV_KEY, JSON.stringify([...favs])); } catch { /* still works for this session */ }
+  return favs.has(k);
+}
 let root, grid, catsEl, searchEl, observer;
 
 export function initLibrary(el) {
@@ -71,18 +83,34 @@ export function setTab(id, cat) {
 function catsFor(tab) {
   switch (tab) {
     case 'media': return ['Project Media', ...BACKGROUND_CATS];
-    case 'audio': return ['Project Audio', ...AUDIO_CATS];
-    case 'pack': return PACK_CATS;
-    case 'title': return ['All', ...TITLE_CATS];
-    case 'transition': return ['All', ...TRANSITION_CATS];
-    case 'effect': return ['All', ...EFFECT_CATS];
-    case 'filter': return ['All', ...FILTER_CATS];
-    case 'element': return ['All', ...ELEMENT_CATS];
+    case 'audio': return ['Project Audio', FAV, ...AUDIO_CATS];
+    case 'pack': return [FAV, ...PACK_CATS];
+    case 'title': return ['All', FAV, ...TITLE_CATS];
+    case 'transition': return ['All', FAV, ...TRANSITION_CATS];
+    case 'effect': return ['All', FAV, ...EFFECT_CATS];
+    case 'filter': return ['All', FAV, ...FILTER_CATS];
+    case 'element': return ['All', FAV, ...ELEMENT_CATS];
+    default: return [];
+  }
+}
+
+// Every item a tab offers from the built-in library (the ones that can be starred).
+function libraryFor(tab) {
+  const as = (list, kind) => list.map((x) => ({ ...x, kind }));
+  switch (tab) {
+    case 'audio': return as(AUDIO_LIBRARY, 'audio-lib');
+    case 'pack': return as(PACKS, 'pack');
+    case 'title': return as(TITLES.filter((t) => !t.seq), 'title');
+    case 'transition': return as(TRANSITIONS, 'transition');
+    case 'effect': return as(EFFECTS, 'effect');
+    case 'filter': return as(FILTERS, 'filter');
+    case 'element': return as(ELEMENTS, 'element');
     default: return [];
   }
 }
 
 function itemsFor(tab, cat) {
+  if (cat === FAV) return libraryFor(tab).filter((x) => isFavorite(x.kind, x.id));
   const all = (list, kind) => list.filter((x) => cat === 'All' || x.cat === cat).map((x) => ({ ...x, kind }));
   switch (tab) {
     case 'media':
@@ -103,8 +131,9 @@ function itemsFor(tab, cat) {
 
 function renderCats() {
   const cats = catsFor(state.tab);
-  if (!cats.includes(state.cat[state.tab])) state.cat[state.tab] = cats[0];
-  catsEl.replaceChildren(...cats.map((c) => h('div.lib-cat', { class: `lib-cat${c === state.cat[state.tab] ? ' active' : ''}`, onclick: () => { state.cat[state.tab] = c; renderCats(); renderGrid(); } }, c, h('span', countFor(c)))));
+  if (!cats.includes(state.cat[state.tab])) state.cat[state.tab] = cats.find((c) => c !== FAV);
+  catsEl.replaceChildren(...cats.map((c) => h('div.lib-cat', { class: `lib-cat${c === state.cat[state.tab] ? ' active' : ''}${c === FAV ? ' fav-cat' : ''}`, 'data-cat': c, onclick: () => { state.cat[state.tab] = c; renderCats(); renderGrid(); } },
+    c === FAV ? h('i', icon('star', 12), c) : c, h('span', countFor(c)))));
 }
 const countFor = (c) => { const n = itemsFor(state.tab, c).length; return n || ''; };
 
@@ -118,7 +147,7 @@ export function renderGrid() {
   if (!grid) return;
   const cat = state.cat[state.tab];
   let items = state.q
-    ? (catsFor(state.tab)[0] === 'All' ? catsFor(state.tab).slice(1) : catsFor(state.tab)).flatMap((c) => itemsFor(state.tab, c))
+    ? catsFor(state.tab).filter((c) => c !== 'All' && c !== FAV).flatMap((c) => itemsFor(state.tab, c))
     : itemsFor(state.tab, cat);
   if (state.q) items = items.filter((i, idx, arr) => i.name.toLowerCase().includes(state.q) && arr.findIndex((x) => x.id === i.id) === idx);
   const used = usedIds();
@@ -126,9 +155,20 @@ export function renderGrid() {
   if ((state.tab === 'media' && cat === 'Project Media') || (state.tab === 'audio' && cat === 'Project Audio')) {
     if (!state.q) kids.push(h('div.import-tile', { onclick: doImport }, icon('upload', 22), 'Import media', h('span.hint', 'or drop files here')));
   }
-  for (const it of items) kids.push(card(it, used));
+  // Themed sequence sections hold intros, mid-rolls and outros: show each kind under its own heading.
+  const grouped = state.tab === 'pack' && SECTION_CATS.includes(cat) && !state.q;
+  if (grouped) {
+    const ROLES = [['intro', 'Intros', 'added at the start'], ['mid', 'Mid-rolls', 'added at the playhead'], ['outro', 'Outros', 'added at the end']];
+    for (const [role, label, where] of ROLES) {
+      const list = items.filter((i) => i.role === role);
+      if (!list.length) continue;
+      kids.push(h('div.grid-head', { 'data-role': role }, label, h('span', ` · ${where}`)));
+      for (const it of list) kids.push(card(it, used));
+    }
+  } else for (const it of items) kids.push(card(it, used));
   if (!items.length && state.tab === 'media' && cat === 'Project Media' && !state.q) kids.push(h('div.empty-note', 'Import videos, photos and music, or drag files in from your file manager.'));
   if (!items.length && state.q) kids.push(h('div.empty-note', 'Nothing matches that search.'));
+  if (!items.length && cat === FAV && !state.q) kids.push(h('div.empty-note', 'Nothing starred yet. Hover over anything in this tab and click its star to keep it here.'));
   grid.replaceChildren(...kids);
 }
 
@@ -167,8 +207,20 @@ function card(it, used) {
     thumb.addEventListener('mouseleave', () => { cancelAnimationFrame(raf); drawPreview(cv, it.kind, it.id, midT, it.dur); });
   }
   const addBtn = h('button.add', { title: 'Add to timeline', onclick: (e) => { e.stopPropagation(); insertItem(pl).catch((err) => toast(err.message, 'err')); } }, icon('plus', 15));
+  let star = null;
+  if (it.kind !== 'media' && it.kind !== 'background') {
+    const tip = (on) => (on ? 'Remove from Favorites' : 'Add to Favorites');
+    const on = isFavorite(it.kind, it.id);
+    star = h('button.fav', { class: `fav${on ? ' on' : ''}`, title: tip(on), onclick: (e) => {
+      e.stopPropagation();
+      const now = toggleFavorite(it.kind, it.id);
+      star.classList.toggle('on', now); star.title = tip(now);
+      renderCats();
+      if (state.cat[state.tab] === FAV && !state.q) renderGrid();
+    } }, icon('star', 14));
+  }
   const el = h('div.card', { class: `card${isAudio ? ' audio' : ''}${it.m?.missing ? ' missing' : ''}`, draggable: true, title: it.m?.missing ? `${it.name} (missing)` : it.name },
-    thumb, addBtn, used.has(it.id) ? h('span.used', icon('check', 11)) : null, h('div.name', it.name));
+    thumb, addBtn, star, used.has(it.id) ? h('span.used', icon('check', 11)) : null, h('div.name', it.name));
   el.addEventListener('dragstart', (e) => {
     dnd.payload = pl;
     dnd.duration = it.kind === 'media' ? (it.m.type === 'image' ? 5 : it.m.duration) : it.kind === 'audio-lib' ? it.dur : it.kind === 'transition' ? 1 : it.dur || 5;

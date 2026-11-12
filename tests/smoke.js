@@ -29,8 +29,10 @@ try {
   const { PACKS } = await import(base + 'templates/packs.js');
   const { AUDIO_LIBRARY } = await import(base + 'templates/audiolib.js');
   const want = { titles: [TITLES.filter((t) => !t.seq).length, 105], transitions: [TRANSITIONS.length, 85], effects: [EFFECTS.length, 55], filters: [FILTERS.length, 50], stickers: [ELEMENTS.length, 100],
-    music: [AUDIO_LIBRARY.filter((a) => a.cat === 'Music').length, 20], sfx: [AUDIO_LIBRARY.filter((a) => a.cat === 'Sound Effects').length, 30],
-    intros: [PACKS.filter((p) => p.cat === 'Intros').length, 40], outros: [PACKS.filter((p) => p.cat === 'Outros').length, 40], education: [PACKS.filter((p) => p.cat === 'Education').length, 40], professional: [PACKS.filter((p) => p.cat === 'Professional').length, 40], backgrounds: [BACKGROUNDS.length, 66] };
+    music: [AUDIO_LIBRARY.filter((a) => a.cat === 'Music').length, 50], sfx: [AUDIO_LIBRARY.filter((a) => a.cat === 'Sound Effects').length, 30],
+    intros: [PACKS.filter((p) => p.cat === 'Intros').length, 40], outros: [PACKS.filter((p) => p.cat === 'Outros').length, 40], education: [PACKS.filter((p) => p.cat === 'Education').length, 40], professional: [PACKS.filter((p) => p.cat === 'Professional').length, 40],
+    ...Object.fromEntries(['News', 'Gaming', 'Travel'].map((c) => [c.toLowerCase(), [PACKS.filter((p) => p.cat === c).length, 40]])),
+    sections: [['News', 'Gaming', 'Travel'].every((c) => ['intro', 'mid', 'outro'].every((r) => PACKS.some((p) => p.cat === c && p.role === r))) ? 1 : 0, 1], backgrounds: [BACKGROUNDS.length, 66] };
   for (const [k, [have, need]] of Object.entries(want)) if (k === 'backgrounds' ? have < need : have !== need) { fails++; log('COUNT FAIL', k, have, 'expected', need); }
   log('counts', JSON.stringify(Object.fromEntries(Object.entries(want).map(([k, v]) => [k, v[0]]))));
   // every pack layer must point at a real template or sound
@@ -85,6 +87,25 @@ try {
     const quiz = S.project.clips.find((c) => c.template === 'seq-edu-quiz');
     if (!right || !quiz || Math.abs(quiz.start - mid) > 1e-3 || Math.abs(st.clipEnd(vid) - mid) > 1e-3 || Math.abs(st.projectDuration() - endBefore - qd) > 1e-3) { fails++; log('PACK FAIL mid-roll', !!right, quiz?.start, mid, st.clipEnd(vid), st.projectDuration() - endBefore); }
     else log('mid-roll split the clip at', mid.toFixed(2), 'and moved the rest', qd, 's later');
+    // Activity Timer: a real countdown whose length follows the typed time
+    const { TIMER } = await import(base + 'templates/scenekit.js');
+    const at = st.clipEnd(quiz), endB = st.projectDuration();
+    S.time = at;
+    await actions.insertItem({ kind: 'pack', id: 'edu-timer' });
+    const tm = S.project.clips.find((c) => c.template === 'seq-edu-timer');
+    const bg = S.project.clips.find((c) => c.type === 'background' && Math.abs(c.start - at) < 1e-3);
+    const ding = S.project.clips.find((c) => c.libId === 'sfx-ding' && Math.abs(c.start - (at + TIMER.lead + 180)) < 1e-3) || S.project.clips.find((c) => c.type === 'audio' && Math.abs(c.start - (at + TIMER.lead + 180)) < 1e-3);
+    const after = S.project.clips.find((c) => Math.abs(c.start - (at + 180 + TIMER.lead + TIMER.tail)) < 1e-3);
+    const dur0 = tm && tm.duration;
+    st.edit(() => actions.retimeTimer(tm, 5 * 60));
+    const ok = tm && bg && ding && after && Math.abs(dur0 - (180 + TIMER.lead + TIMER.tail)) < 1e-3 && Math.abs(tm.duration - (300 + TIMER.lead + TIMER.tail)) < 1e-3
+      && Math.abs(st.clipEnd(bg) - st.clipEnd(tm)) < 1e-3 && Math.abs(ding.start - (at + TIMER.lead + 300)) < 1e-3 && Math.abs(after.start - st.clipEnd(tm)) < 1e-3 && Math.abs(st.projectDuration() - endB - 300 - TIMER.lead - TIMER.tail) < 1e-3;
+    if (!ok) { fails++; log('PACK FAIL timer', !!tm, !!bg, !!ding, !!after, dur0, tm?.duration, bg && st.clipEnd(bg), ding?.start, after?.start); }
+    else log('timer: 3:00 → 5:00 grew the clip, its background and moved the sound and later clips');
+    st.edit(() => actions.retimeTimer(tm, 60));
+    if (Math.abs(tm.duration - (60 + TIMER.lead + TIMER.tail)) > 1e-3 || Math.abs(st.clipEnd(bg) - st.clipEnd(tm)) > 1e-3 || Math.abs(after.start - st.clipEnd(tm)) > 1e-3) { fails++; log('PACK FAIL timer shrink', tm.duration, after.start); }
+    else log('timer: 5:00 → 1:00 shrank it and pulled the later clips back');
+    st.edit(() => st.removeClips([tm.id, bg.id, ding.id].filter(Boolean)));
   }
   log('after packs', S.project.clips.length, 'clips on', S.project.tracks.length, 'tracks');
   S.time = 0;

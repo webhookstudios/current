@@ -121,7 +121,7 @@ function buildTopbar() {
     ]),
     menu('Brand', brandMenu),
     menu('Help', () => [
-      { label: 'What’s new in Current 1.5', icon: 'news', run: () => showWhatsNew() },
+      { label: 'What’s new in Current 1.6', icon: 'news', run: () => showWhatsNew() },
       { label: 'Keyboard shortcuts', icon: 'keyboard', kbd: '?', run: showShortcuts },
       { label: 'About Current', icon: 'info', run: showAbout },
     ]),
@@ -243,7 +243,7 @@ async function showStart() {
       h('button.btn.primary.big', { onclick: () => { const ok = !store.dirty || !store.project.clips.length; if (!ok && !confirm('Discard the current project?')) return; loadProject(newProject({ aspect }), null); closeStart(); } }, icon('plus', 18), 'New Project'),
       h('button.btn.big', { onclick: () => openProject() }, icon('folder', 18), 'Open Project'),
       store.project.clips.length ? h('button.btn.ghost', { onclick: closeStart }, 'Back to current project') : null,
-      h('button.btn.ghost.start-news', { onclick: () => showWhatsNew() }, icon('news', 16), 'What’s new in 1.5'),
+      h('button.btn.ghost.start-news', { onclick: () => showWhatsNew() }, icon('news', 16), 'What’s new in 1.6'),
     ),
     h('div.start-main',
       h('h2', 'Recent projects'),
@@ -327,12 +327,15 @@ function showShortcuts() {
     ...rows.flatMap(([k, d]) => [h('span', k.split(' / ').map((x, i) => [i ? ' / ' : '', h('kbd', x)])), h('span', d)])])) });
 }
 
-// What's new in 1.5, then every 1.4 feature: where to find each, and a button that opens it where that makes sense.
+// What's new in 1.6 and 1.5, then every 1.4 feature: where to find each, and a button that opens it where that makes sense.
 function showWhatsNew() {
   const c = selectedClip();
   const sound = c && (c.type === 'audio' || c.type === 'video');
   const rows = [
-    ['midroll', 'Mid-rolls: Education and Professional', 'New in 1.5: 80 pieces for the middle of a video, from quizzes and key terms to KPIs, pricing and team members. The Sequences tab on the left (it was Intro/Outro); + puts one in at the playhead.', () => setTab('pack', 'Education')],
+    ['star', 'Favorites', 'New in 1.6: hover over anything in Audio, Sequences, Titles, Transitions, Effects, Filters or Stickers and click its star. Each of those tabs keeps a Favorites group.', () => setTab('pack', 'Favorites')],
+    ['film', 'News, Gaming and Travel sequences', 'New in 1.6: 40 pieces in each, with intros, mid-rolls and outros under their own headings. The Sequences tab on the left.', () => setTab('pack', 'News')],
+    ['audio', '50 music tracks', 'New in 1.6: 30 new tracks, from house and drum and bass to waltz, bossa and lullabies. Audio › Music.', () => setTab('audio', 'Music')],
+    ['midroll', 'Mid-rolls: Education and Professional', 'New in 1.5: 80 pieces for the middle of a video; + puts one in at the playhead. In 1.6 the chart pieces gave way to general ones, and Activity Timer counts down for real: type any time.', () => setTab('pack', 'Education')],
     ['chart', 'Chart intros and outros', 'New in 1.5: Line Climb, Donut Fill, Big Number, Stacked Columns, Ranking Bars and Milestone Timeline, each with a matching outro. Their numbers are editable text. Sequences › Intros.', () => setTab('pack', 'Intros')],
     ['mic', 'Record a voiceover', 'Tools › Record voiceover, the microphone button above the timeline, or press R. Recording starts at the playhead after a short countdown.', openVoiceover],
     ['screen', 'Record your screen', 'Tools › Record screen, the screen button above the timeline, or Shift+R. Add a round webcam bubble and your microphone.', openScreenRecord],
@@ -345,7 +348,7 @@ function showWhatsNew() {
     ['shape', 'Shapes and outline', 'Clip › Shape and outline: show a video or photo as a rounded rectangle or a circle.', c && (c.type === 'video' || c.type === 'image') ? () => inspect('video', 'Shape') : null],
   ];
   const dlg = modal({
-    title: 'What’s new in Current 1.5',
+    title: 'What’s new in Current 1.6',
     body: h('div.news', rows.map(([ic, name, where, run]) => h('div.news-row',
       h('span.ic', icon(ic, 18)),
       h('div', h('b', name), h('div.where', where)),

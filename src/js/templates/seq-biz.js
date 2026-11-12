@@ -963,14 +963,305 @@ function milestoneReached(ctx, S) {
   ], 30 * u);
 }
 
+// ---------- general pieces with no charts (these replaced the chart pieces in 1.6) ----------
+
+// A letter or number in a disc that pops in, printed in the same piece.
+function letterDisc(ctx, S, t, cx, cy, r, bg, ink, delay) {
+  const u = S.u;
+  piece(ctx, { x: cx - r, y: cy - r, w: r * 2, h: r * 2 }, (c) => {
+    const kk = ease.outBack(clamp((S.t - delay) / 0.4)); if (kk <= 0) return;
+    c.globalAlpha = fo(S); c.fillStyle = bg; c.beginPath(); c.arc(cx, cy, r * kk, 0, Math.PI * 2); c.fill();
+    drawText(c, S, t, cx, cy + 2 * u, { ...sized(TY.num, (r / u) * 0.95), color: ink, align: 'center', maxWidth: (r * 1.3) / S.W, ...still0, alpha: Math.min(1, kk) });
+  });
+}
+// A title on its own row, left-aligned: { h, draw(y) }.
+function titleRow(ctx, S, f, k, text, x0, cw, size = 72, align = 'left') {
+  const o = sized(TY.title, size), h = measure(ctx, S, text, o).h;
+  return { h, draw: (y) => animText(ctx, S, text, align === 'center' ? f.W / 2 : x0, y + h / 2, { ...o, color: k.ink, align, anim: 'up', delay: 0.1, maxWidth: cw / f.W }) };
+}
+
+// FAQ: a question beside a Q, then the answer on a card beside an A.
+function faq(ctx, S) {
+  const f = frame(S), u = f.u, k = K(S), { cw, x0 } = area(f);
+  const r = 40 * u, gap = 32 * u, tx0 = x0 + r * 2 + gap, tw = cw - r * 2 - gap, pad = 40 * u;
+  const qo = sized(TY.title, f.tall ? 56 : 64), ao = sized(TY.body, 42);
+  const q = wrapO(ctx, S, tx(S, 1), qo, tw / f.W), mq = measure(ctx, S, q, qo);
+  const a = wrapO(ctx, S, tx(S, 2), ao, (tw - pad * 2) / f.W), ma = measure(ctx, S, a, ao);
+  const qh = Math.max(r * 2, mq.h), ah = Math.max(r * 2, ma.h + pad * 2);
+  column(f, [
+    [54 * u, (y) => pill(ctx, S, tx(S, 0), x0, y + 27 * u, { bg: k.acc, ink: k.on, delay: 0.1 })],
+    [qh, (y) => {
+      letterDisc(ctx, S, tx(S, 3), x0 + r, y + qh / 2, r, k.ink, k.dark ? '#111827' : '#ffffff', 0.3);
+      animText(ctx, S, q, tx0, y + qh / 2, { ...qo, color: k.ink, align: 'left', anim: 'up', delay: 0.4, inDur: 0.5, stagger: 0.008, maxWidth: tw / f.W });
+    }],
+    [ah, (y) => {
+      letterDisc(ctx, S, tx(S, 4), x0 + r, y + ah / 2, r, k.acc, k.on, 1.2);
+      card(ctx, S, { x: tx0, y, w: tw, h: ah }, { color: k.surf, delay: 1.3, r: 24, border: k.dark ? null : rgba(k.ink, 0.08) });
+      animText(ctx, S, a, tx0 + pad, y + ah / 2, { ...ao, color: k.ink, align: 'left', anim: 'fade', delay: 1.5, maxWidth: (tw - pad * 2) / f.W });
+    }],
+  ], 40 * u);
+}
+
+// Do's and Don'ts: two cards, ticks down one and crosses down the other.
+function dosDonts(ctx, S) {
+  const f = frame(S), u = f.u, k = K(S), { cw, x0 } = area(f);
+  const side = !f.tall && !f.square, gap = (side ? 40 : 28) * u, pw = side ? (cw - gap) / 2 : cw;
+  const pad = (side ? 40 : 30) * u, r = (side ? 30 : 26) * u, rowH = (side ? 84 : 62) * u, io = sized(TY.strong, side ? 38 : 34);
+  const ph = pad * 2 + r * 2 + 20 * u + rowH * 3, tr = titleRow(ctx, S, f, k, tx(S, 0), x0, cw, side ? 72 : 64);
+  column(f, [
+    [tr.h, tr.draw],
+    [side ? ph : ph * 2 + gap, (y) => [0, 1].forEach((j) => {
+      const bx = side ? x0 + j * (pw + gap) : x0, by = side ? y : y + j * (ph + gap), d = 0.3 + j * 0.5, c0 = j ? DOWN : UP;
+      card(ctx, S, { x: bx, y: by, w: pw, h: ph }, { color: k.surf, delay: d, r: 26, border: rgba(c0, 0.4), inner: (c) => {
+        const kk = ease.outBack(clamp((S.t - d - 0.15) / 0.4)), cx = bx + pad + r, cy = by + pad + r;
+        if (!j) checkBadge(c, cx, cy, r, kk, c0, '#ffffff', u);
+        else if (kk > 0) { c.fillStyle = c0; c.beginPath(); c.arc(cx, cy, r * kk, 0, Math.PI * 2); c.fill(); glyph(c, 'cross', cx, cy, r * 0.75, '#ffffff', kk, u); }
+      } });
+      animText(ctx, S, tx(S, 1 + j), bx + pad + r * 2 + 20 * u, by + pad + r, { ...sized(TY.head, side ? 44 : 40), color: c0, align: 'left', anim: 'fade', delay: d + 0.2, maxWidth: (pw - pad * 2 - r * 2 - 20 * u) / f.W });
+      for (let i = 0; i < 3; i++) {
+        const yy = by + pad + r * 2 + 20 * u + rowH * i + rowH / 2, dd = d + 0.4 + i * 0.15;
+        piece(ctx, { x: bx + pad, y: yy - 16 * u, w: 32 * u, h: 32 * u }, (c) => { const kk = kin(S, dd, 0.3); if (kk <= 0) return; c.globalAlpha = fo(S) * kk; glyph(c, j ? 'cross' : 'check', bx + pad + 16 * u, yy, 14 * u, c0, 1, u); });
+        animText(ctx, S, tx(S, 3 + j * 3 + i), bx + pad + 52 * u, yy, { ...io, color: k.ink, align: 'left', anim: 'fade', delay: dd, maxWidth: (pw - pad * 2 - 52 * u) / f.W });
+      }
+    })],
+  ], 40 * u);
+}
+
+// Action Items: tasks with an empty box, who owns each one and when it is due.
+function actionItems(ctx, S) {
+  const f = frame(S), u = f.u, k = K(S), { cw, x0 } = area(f);
+  const wide = !f.tall, n = 3, rowH = (wide ? 112 : 150) * u, box = 40 * u, tx0 = x0 + box + 30 * u;
+  const dueW = wide ? 170 * u : 0, ownW = wide ? 280 * u : 0, taskW = cw - box - 30 * u - (wide ? ownW + dueW + 30 * u : 0);
+  const tr = titleRow(ctx, S, f, k, tx(S, 0), x0, cw);
+  const due = (t, x, y, d, align) => {
+    const mw = measure(ctx, S, t, sized(TY.strong, 32)).w, gx = align === 'right' ? x - mw - 26 * u : x + 16 * u;
+    piece(ctx, { x: gx - 16 * u, y: y - 16 * u, w: 32 * u, h: 32 * u }, (c) => { const kk = kin(S, d, 0.3); if (kk <= 0) return; c.globalAlpha = fo(S) * kk; glyph(c, 'calendar', gx, y, 15 * u, k.muted, 1, u); });
+    animText(ctx, S, t, align === 'right' ? x : gx + 26 * u, y, { ...sized(TY.strong, 32), color: k.muted, align: align === 'right' ? 'right' : 'left', anim: 'fade', delay: d, maxWidth: (wide ? dueW : cw * 0.4) / f.W });
+  };
+  column(f, [
+    [tr.h, tr.draw],
+    [rowH * n, (y) => { for (let i = 0; i < n; i++) {
+      const yy = y + rowH * i, cy = yy + rowH / 2, d = 0.4 + i * 0.25, ty = wide ? cy : cy - 26 * u;
+      line(ctx, x0, yy + rowH, x0 + cw, yy + rowH, kin(S, d, 0.5) * fo(S), rgba(k.ink, 0.14), 2 * u);
+      piece(ctx, { x: x0, y: ty - box / 2, w: box, h: box }, (c) => { const kk = ease.outBack(clamp((S.t - d) / 0.35)); if (kk <= 0) return; c.globalAlpha = fo(S); c.strokeStyle = k.acc; c.lineWidth = 4 * u; roundRect(c, x0 + (box / 2) * (1 - kk), ty - (box / 2) * kk, box * kk, box * kk, 9 * u); c.stroke(); });
+      animText(ctx, S, tx(S, 1 + i * 3), tx0, ty, { ...sized(TY.strong, 40), color: k.ink, align: 'left', anim: 'fade', delay: d + 0.1, maxWidth: (wide ? taskW : cw - box - 30 * u) / f.W });
+      if (wide) {
+        pill(ctx, S, tx(S, 2 + i * 3), x0 + cw - dueW - ownW, cy, { o: sized(TY.strong, 30), bg: rgba(k.acc, 0.2), ink: k.ink, delay: d + 0.25, h: 52, maxW: ownW - 20 * u });
+        due(tx(S, 3 + i * 3), x0 + cw, cy, d + 0.35, 'right');
+      } else {
+        const p = pill(ctx, S, tx(S, 2 + i * 3), tx0, cy + 34 * u, { o: sized(TY.strong, 28), bg: rgba(k.acc, 0.2), ink: k.ink, delay: d + 0.25, h: 48, maxW: cw * 0.45 });
+        due(tx(S, 3 + i * 3), tx0 + p.w + 10 * u, cy + 34 * u, d + 0.35, 'left');
+      }
+    } }],
+  ], 40 * u);
+}
+
+// Why Choose Us: four reasons on cards, each with an icon (two across on wide frames).
+function whyUs(ctx, S) {
+  const f = frame(S), u = f.u, k = K(S), { cw, x0 } = area(f);
+  const cols = f.tall || f.square ? 1 : 2, rows = 4 / cols, gap = 26 * u, pw = (cw - gap * (cols - 1)) / cols;
+  const ph = (cols === 2 ? 200 : f.square ? 142 : 168) * u, pad = 32 * u, R = (cols === 2 ? 44 : 38) * u, icons = ['clock', 'chat', 'gem', 'pin'];
+  const tr = titleRow(ctx, S, f, k, tx(S, 0), x0, cw, f.square ? 64 : 72);
+  column(f, [
+    [tr.h, tr.draw],
+    [rows * ph + (rows - 1) * gap, (y) => { for (let i = 0; i < 4; i++) {
+      const bx = x0 + (i % cols) * (pw + gap), by = y + Math.floor(i / cols) * (ph + gap), d = 0.3 + i * 0.18;
+      const tx1 = bx + pad + R * 2 + 26 * u, tw = (pw - pad * 2 - R * 2 - 26 * u) / f.W;
+      card(ctx, S, { x: bx, y: by, w: pw, h: ph }, { color: k.surf, delay: d, r: 24, border: k.dark ? null : rgba(k.ink, 0.07) });
+      iconDisc(ctx, S, icons[i], bx + pad + R, by + ph / 2, R, k.acc, k.on, d + 0.15);
+      animText(ctx, S, tx(S, 1 + i * 2), tx1, by + ph / 2 - 24 * u, { ...sized(TY.head, 42), color: k.ink, align: 'left', anim: 'fade', delay: d + 0.25, maxWidth: tw });
+      animText(ctx, S, tx(S, 2 + i * 2), tx1, by + ph / 2 + 26 * u, { ...sized(TY.body, 32), color: k.muted, align: 'left', anim: 'fade', delay: d + 0.35, maxWidth: tw });
+    } }],
+  ], 40 * u);
+}
+
+// Work Cycle: four steps round a loop, with arrows showing it goes round again.
+function cycle(ctx, S) {
+  const f = frame(S), u = f.u, k = K(S), { cw, x0 } = area(f);
+  const side = !f.tall && !f.square, R = side ? Math.min(f.H * 0.27, 290 * u) : f.square ? 205 * u : Math.min(cw * 0.36, 300 * u);
+  const tw = side ? cw - R * 2 - 220 * u : cw, mw = tw / f.W, al = side ? 'left' : 'center';
+  const items = [
+    { text: tx(S, 0), o: TY.label, color: k.acc, anim: 'fade', delay: 0.1 },
+    { text: wrapO(ctx, S, tx(S, 1), sized(TY.title, 72), mw), o: sized(TY.title, 72), color: k.ink, gap: 20, delay: 0.2 },
+    { text: wrapO(ctx, S, tx(S, 6), TY.body, mw), o: TY.body, color: k.muted, gap: 24, anim: 'fade', delay: 0.5 },
+  ];
+  const textH = stack(ctx, S, items, 0, 0, { maxW: mw, draw: false });
+  const loop = (cx, cy) => {
+    piece(ctx, { x: cx - R - 20 * u, y: cy - R - 20 * u, w: R * 2 + 40 * u, h: R * 2 + 40 * u }, (c) => {
+      const kk = kin(S, 0.4, 1.4, ease.inOutCubic); if (kk <= 0) return;
+      c.globalAlpha = fo(S);
+      c.fillStyle = rgba(k.acc, 0.07); c.beginPath(); c.arc(cx, cy, R - 40 * u, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = rgba(k.ink, 0.28); c.lineWidth = 6 * u; c.lineCap = 'round';
+      c.beginPath(); c.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * kk); c.stroke();
+      for (let i = 0; i < 4; i++) {
+        if (kk < i * 0.25 + 0.14) continue;
+        const a = -Math.PI / 4 + i * (Math.PI / 2), ax = cx + R * Math.cos(a), ay = cy + R * Math.sin(a);
+        c.save(); c.translate(ax, ay); c.rotate(a + Math.PI / 2); c.fillStyle = k.acc;
+        c.beginPath(); c.moveTo(16 * u, 0); c.lineTo(-10 * u, -14 * u); c.lineTo(-10 * u, 14 * u); c.closePath(); c.fill(); c.restore();
+      }
+    });
+    for (let i = 0; i < 4; i++) {
+      const a = -Math.PI / 2 + i * (Math.PI / 2);
+      pill(ctx, S, tx(S, 2 + i), cx + R * Math.cos(a), cy + R * Math.sin(a), { o: sized(TY.head, 38), bg: k.acc, ink: k.on, align: 'center', delay: 0.5 + i * 0.3, h: 74, padX: 32, maxW: R * 1.25 });
+    }
+  };
+  if (side) { loop(x0 + cw - R - 60 * u, f.H / 2); stack(ctx, S, items, x0, f.H / 2 - textH / 2, { maxW: mw, align: al }); }
+  else column(f, [[textH, (y) => stack(ctx, S, items, f.W / 2, y, { maxW: mw, align: al })], [R * 2 + 80 * u, (y) => loop(f.W / 2, y + R + 40 * u)]], 60 * u);
+}
+
+// Visit Us: a small street map with a pin dropping onto it, then the address and opening hours.
+function visitUs(ctx, S) {
+  const f = frame(S), u = f.u, k = K(S), { cw, x0 } = area(f);
+  const side = !f.tall, mapW = side ? Math.min(cw * 0.4, f.H * 0.62) : cw, mapH = side ? mapW : Math.min(cw * 0.62, f.H * 0.3);
+  const tw = side ? cw - mapW - 80 * u : cw, mw = tw / f.W;
+  const items = [
+    { text: tx(S, 0), o: TY.label, color: k.acc, anim: 'fade', delay: 0.3 },
+    { text: wrapO(ctx, S, tx(S, 1), sized(TY.title, 66), mw), o: sized(TY.title, 66), color: k.ink, gap: 20, delay: 0.4 },
+  ];
+  const hH = stack(ctx, S, items, 0, 0, { maxW: mw, draw: false }), rowsH = 96 * u + 30 * u + 44 * u, textH = hH + 44 * u + rowsH;
+  const map = (bx, by) => piece(ctx, { x: bx, y: by, w: mapW, h: mapH }, (c) => {
+    const kk = kin(S, 0.1, 0.6); if (kk <= 0) return;
+    c.globalAlpha = fo(S) * kk;
+    c.save(); roundRect(c, bx, by, mapW, mapH, 30 * u); c.clip();
+    c.fillStyle = k.dark ? rgba('#ffffff', 0.07) : rgba(k.ink, 0.06); c.fillRect(bx, by, mapW, mapH);
+    c.fillStyle = rgba(k.acc2, 0.28); roundRect(c, bx + mapW * 0.64, by + mapH * 0.08, mapW * 0.28, mapH * 0.24, 14 * u); c.fill();
+    c.strokeStyle = k.dark ? rgba('#ffffff', 0.16) : '#ffffff'; c.lineCap = 'butt';
+    const st = (x1, y1, x2, y2, w) => { c.lineWidth = w * u; c.beginPath(); c.moveTo(bx + mapW * x1, by + mapH * y1); c.lineTo(bx + mapW * x2, by + mapH * y2); c.stroke(); };
+    st(0, 0.42, 1, 0.42, 26); st(0, 0.8, 1, 0.8, 18); st(0.28, 0, 0.28, 1, 18); st(0.56, 0, 0.56, 1, 26); st(0, 1.05, 1, 0.12, 14);
+    c.restore();
+    const px = bx + mapW * 0.56, py = by + mapH * 0.42, pr = 34 * u, kd = ease.outBounce(clamp((S.t - 0.6) / 0.7));
+    if (S.t < 0.6) return;
+    c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(px, py, 24 * u * kd, 8 * u * kd, 0, 0, Math.PI * 2); c.fill();
+    const dy = -(1 - kd) * mapH * 0.4, hy = py + dy - pr * 1.9, a1 = Math.PI - 0.85, a2 = 0.85;
+    c.fillStyle = k.acc; c.beginPath(); c.moveTo(px, py + dy); c.lineTo(px + pr * Math.cos(a1), hy + pr * Math.sin(a1)); c.arc(px, hy, pr, a1, a2); c.closePath(); c.fill();
+    c.fillStyle = k.on; c.beginPath(); c.arc(px, hy, pr * 0.4, 0, Math.PI * 2); c.fill();
+  });
+  const body = (x, y) => {
+    stack(ctx, S, items, x, y, { maxW: mw });
+    let yy = y + hH + 44 * u;
+    [['clock', tx(S, 2), tx(S, 3)], ['check', tx(S, 4), '']].forEach(([g, a, b], i) => {
+      const d = 1.0 + i * 0.25;
+      piece(ctx, { x, y: yy - 2 * u, w: 40 * u, h: 40 * u }, (c) => { const kk = kin(S, d, 0.3); if (kk <= 0) return; c.globalAlpha = fo(S) * kk; glyph(c, g, x + 20 * u, yy + 18 * u, 18 * u, k.acc, 1, u); });
+      animText(ctx, S, a, x + 60 * u, yy + 18 * u, { ...sized(TY.strong, 38), color: k.ink, align: 'left', anim: 'fade', delay: d, maxWidth: (tw - 60 * u) / f.W });
+      if (b) animText(ctx, S, b, x + 60 * u, yy + 66 * u, { ...TY.body, color: k.muted, align: 'left', anim: 'fade', delay: d + 0.1, maxWidth: (tw - 60 * u) / f.W });
+      yy += b ? 96 * u + 30 * u : 44 * u;
+    });
+  };
+  if (side) { map(x0, f.H / 2 - mapH / 2); body(x0 + mapW + 80 * u, f.H / 2 - textH / 2); }
+  else column(f, [[mapH, (y) => map(x0, y)], [textH, (y) => body(x0, y)]], 50 * u);
+}
+
+// Special Offer: a coupon with a dashed edge, the offer in big letters and a code to use.
+function offer(ctx, S) {
+  const f = frame(S), u = f.u, k = K(S), { cw } = area(f);
+  const w = Math.min(cw, 1150 * u), bx = f.W / 2 - w / 2, pad = 64 * u, inner = (w - pad * 2) / f.W;
+  const bo = { ...sized(TY.big, f.tall ? 150 : 170), fontFixed: true }, mB = measure(ctx, S, tx(S, 1), bo), bH = mB.h * Math.min(1, (w - pad * 2) / mB.w) * 0.85;
+  const co = sized(TY.num, 46), codeW = Math.min(w - pad * 2, measure(ctx, S, tx(S, 4), co).w + 120 * u), codeH = 92 * u;
+  const ch = pad + 30 * u + 26 * u + bH + 22 * u + 46 * u + 40 * u + 32 * u + 18 * u + codeH + pad;
+  const by = f.H / 2 - (ch + 80 * u) / 2, cx = f.W / 2;
+  card(ctx, S, { x: bx, y: by, w, h: ch }, { color: k.acc, delay: 0.1, r: 34, shadow: k.dark ? 0 : 30, inner: (c) => {
+    c.setLineDash([16 * u, 12 * u]); c.strokeStyle = rgba(k.on, 0.45); c.lineWidth = 4 * u; roundRect(c, bx + 20 * u, by + 20 * u, w - 40 * u, ch - 40 * u, 22 * u); c.stroke(); c.setLineDash([]);
+  } });
+  let y = by + pad;
+  animText(ctx, S, tx(S, 0), cx, y + 15 * u, { ...TY.label, color: k.on, anim: 'fade', delay: 0.4, maxWidth: inner }); y += 30 * u + 26 * u;
+  animText(ctx, S, tx(S, 1), cx, y + bH / 2, { ...bo, color: k.on, anim: 'pop', delay: 0.5, stagger: 0.02, maxWidth: inner }); y += bH + 22 * u;
+  animText(ctx, S, tx(S, 2), cx, y + 23 * u, { ...sized(TY.strong, 42), color: k.on, anim: 'fade', delay: 0.9, maxWidth: inner }); y += 46 * u + 40 * u;
+  animText(ctx, S, tx(S, 3), cx, y + 16 * u, { ...sized(TY.small, 30), color: rgba(k.on, 0.8), anim: 'fade', delay: 1.2, maxWidth: inner }); y += 32 * u + 18 * u;
+  card(ctx, S, { x: cx - codeW / 2, y, w: codeW, h: codeH }, { color: k.on, delay: 1.3, r: 18, rise: 10 });
+  animText(ctx, S, tx(S, 4), cx, y + codeH / 2 + 2 * u, { ...co, color: k.acc, anim: 'fade', delay: 1.5, maxWidth: (codeW - 60 * u) / f.W });
+  animText(ctx, S, tx(S, 5), cx, by + ch + 50 * u, { ...TY.body, color: k.muted, anim: 'fade', delay: 1.8, maxWidth: cw / f.W });
+}
+
+// Our Promise: a shield badge with a ring drawing round it, then the promise beside it.
+function promise(ctx, S) {
+  const f = frame(S), u = f.u, k = K(S), { cw, x0 } = area(f);
+  const side = !f.tall, R = (side ? (f.square ? 130 : 180) : 160) * u, tw = side ? cw - R * 2 - (f.square ? 60 : 90) * u : cw, mw = tw / f.W, al = side ? 'left' : 'center', ts = f.square ? 64 : 76;
+  const items = [
+    { text: tx(S, 0), o: TY.label, color: k.acc, anim: 'fade', delay: 0.4 },
+    { text: wrapO(ctx, S, tx(S, 1), sized(TY.title, ts), mw), o: sized(TY.title, ts), color: k.ink, gap: 20, delay: 0.5 },
+    { text: wrapO(ctx, S, tx(S, 2), TY.body, mw), o: TY.body, color: k.muted, gap: 26, anim: 'fade', delay: 1.0 },
+  ];
+  const textH = stack(ctx, S, items, 0, 0, { maxW: mw, draw: false });
+  const badge = (cx, cy) => piece(ctx, { x: cx - R, y: cy - R, w: R * 2, h: R * 2 }, (c) => {
+    const kk = ease.outBack(clamp((S.t - 0.1) / 0.55)); if (kk <= 0) return;
+    c.globalAlpha = fo(S);
+    c.strokeStyle = k.acc; c.lineWidth = 8 * u; c.lineCap = 'round'; c.beginPath(); c.arc(cx, cy, R - 6 * u, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * kin(S, 0.3, 1.1, ease.inOutCubic)); c.stroke();
+    c.fillStyle = rgba(k.acc, 0.16); c.beginPath(); c.arc(cx, cy, (R - 30 * u) * kk, 0, Math.PI * 2); c.fill();
+    glyph(c, 'shield', cx, cy, R * 0.5, k.acc, Math.min(1, kk), u);
+  });
+  if (side) { badge(x0 + R, f.H / 2); stack(ctx, S, items, x0 + R * 2 + (f.square ? 60 : 90) * u, f.H / 2 - textH / 2, { maxW: mw, align: al }); }
+  else column(f, [[R * 2, (y) => badge(f.W / 2, y + R)], [textH, (y) => stack(ctx, S, items, f.W / 2, y, { maxW: mw, align: al })]], 50 * u);
+}
+
+// Team Shout-out: initials in a circle with hearts floating up, then who it is for and why.
+function shoutout(ctx, S) {
+  const f = frame(S), u = f.u, k = K(S), { cw, x0 } = area(f);
+  const side = !f.tall, R = (side ? 160 : 140) * u, tw = side ? cw - R * 2 - 120 * u : cw, mw = tw / f.W, al = side ? 'left' : 'center';
+  const items = [
+    { text: tx(S, 0), o: TY.label, color: k.acc, anim: 'fade', delay: 0.4 },
+    { text: tx(S, 1), o: sized(TY.title, 84), color: k.ink, gap: 20, delay: 0.5 },
+    { text: wrapO(ctx, S, tx(S, 2), sized(TY.body, 40), mw), o: sized(TY.body, 40), color: k.ink, gap: 24, anim: 'fade', delay: 0.9 },
+    { text: tx(S, 4), o: sized(TY.strong, 32), color: k.muted, gap: 24, anim: 'fade', delay: 1.3 },
+  ];
+  const textH = stack(ctx, S, items, 0, 0, { maxW: mw, draw: false });
+  const avatar = (cx, cy) => {
+    piece(ctx, { x: cx - R * 1.5, y: cy - R * 2.2, w: R * 3, h: R * 3.2 }, (c) => {
+      c.globalAlpha = fo(S);
+      for (let i = 0; i < 9; i++) {
+        const t0 = 0.8 + i * 0.35, p = (S.t - t0) / 2.6; if (p <= 0 || p >= 1) continue;
+        const hx = cx + Math.sin(i * 2.3) * R * 1.1 + Math.sin(S.t * 2 + i) * 14 * u, hy = cy + R * 0.6 - p * R * 2.6;
+        c.globalAlpha = fo(S) * Math.sin(p * Math.PI);
+        glyph(c, 'heart', hx, hy, (16 + (i % 3) * 6) * u, i % 2 ? k.acc : k.acc2, 1, u);
+      }
+    });
+    piece(ctx, { x: cx - R, y: cy - R, w: R * 2, h: R * 2 }, (c) => {
+      const kk = ease.outBack(clamp((S.t - 0.1) / 0.55)); if (kk <= 0) return;
+      c.globalAlpha = fo(S);
+      c.strokeStyle = k.acc2; c.lineWidth = 8 * u; c.beginPath(); c.arc(cx, cy, R * kk, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * kin(S, 0.3, 1.0, ease.inOutCubic)); c.stroke();
+      c.fillStyle = k.acc; c.beginPath(); c.arc(cx, cy, (R - 18 * u) * kk, 0, Math.PI * 2); c.fill();
+      drawText(c, S, tx(S, 3), cx, cy + 4 * u, { ...sized(TY.num, (R / u) * 0.62), color: k.on, align: 'center', maxWidth: (R * 1.3) / f.W, ...still0, alpha: Math.min(1, kk) });
+    });
+  };
+  if (side) { avatar(x0 + R * 1.2, f.H / 2); stack(ctx, S, items, x0 + R * 2.4 + 80 * u, f.H / 2 - textH / 2, { maxW: (cw - R * 2.4 - 80 * u) / f.W, align: al }); }
+  else column(f, [[R * 2, (y) => avatar(f.W / 2, y + R)], [textH, (y) => stack(ctx, S, items, f.W / 2, y, { maxW: mw, align: al })]], 60 * u);
+}
+
+// Short Break: a steaming cup, then "We'll be right back" and a line under it.
+function breakTime(ctx, S) {
+  const f = frame(S), u = f.u, k = K(S), { cw } = area(f), mw = cw / f.W;
+  const cupW = 210 * u, cupH = 170 * u, steamH = 110 * u, blockH = steamH + cupH + 30 * u;
+  const to = sized(TY.big, f.tall ? 96 : 110), t = wrapO(ctx, S, tx(S, 1), to, mw), mt = measure(ctx, S, t, to);
+  const cup = (cx, top) => piece(ctx, { x: cx - cupW, y: top, w: cupW * 2, h: blockH }, (c) => {
+    const kk = ease.outBack(clamp((S.t - 0.2) / 0.5)); if (kk <= 0) return;
+    c.globalAlpha = fo(S);
+    const y0 = top + steamH + (1 - Math.min(1, kk)) * 40 * u, l = cx - cupW / 2, r = cx + cupW / 2;
+    c.fillStyle = rgba(k.ink, 0.18); roundRect(c, cx + 10 * u - cupW * 0.72, y0 + cupH - 2 * u, cupW * 1.44, 24 * u, 12 * u); c.fill();
+    c.strokeStyle = k.acc; c.lineWidth = 18 * u; c.beginPath(); c.arc(r - 8 * u, y0 + cupH * 0.38, 42 * u, -Math.PI / 2, Math.PI / 2); c.stroke();
+    c.fillStyle = k.acc; c.beginPath(); c.moveTo(l, y0); c.lineTo(r, y0); c.quadraticCurveTo(r, y0 + cupH, cx + cupW * 0.22, y0 + cupH); c.lineTo(cx - cupW * 0.22, y0 + cupH); c.quadraticCurveTo(l, y0 + cupH, l, y0); c.closePath(); c.fill();
+    const ks = kin(S, 0.6, 0.6); if (ks <= 0) return;
+    c.strokeStyle = rgba(k.ink, 0.35 * ks); c.lineWidth = 8 * u; c.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      const sx = cx + (i - 1) * 50 * u; c.beginPath();
+      for (let s = 0; s <= 20; s++) { const p = s / 20, yy = y0 - 18 * u - p * (steamH - 30 * u), xx = sx + Math.sin(p * 6 + S.t * 3 + i * 2) * 12 * u; s ? c.lineTo(xx, yy) : c.moveTo(xx, yy); }
+      c.stroke();
+    }
+  });
+  column(f, [
+    [54 * u, (y) => pill(ctx, S, tx(S, 0), f.W / 2, y + 27 * u, { bg: k.acc, ink: k.on, align: 'center', delay: 0.1 })],
+    [blockH, (y) => cup(f.W / 2 - 20 * u, y)],
+    [mt.h, (y) => animText(ctx, S, t, f.W / 2, y + mt.h / 2, { ...to, color: k.ink, anim: 'up', delay: 0.6, stagger: 0.01, maxWidth: mw })],
+    [40 * u, (y) => animText(ctx, S, tx(S, 2), f.W / 2, y + 20 * u, { ...TY.body, color: k.muted, anim: 'fade', delay: 1.1, maxWidth: mw })],
+  ], 36 * u);
+}
+
 // ---------- the list ----------
 const sw = [['sfx-swipe', 0.1]], wh = [['sfx-whoosh', 0.1]], pop = [['sfx-pop', 0.15]];
 seq('kpi', 'Big Number', 'white', { sfx: [['sfx-riser', 0.1], ['sfx-ding', 1.8]], texts: ['Monthly revenue', '$1.28M', '+12% vs last quarter', 'Our best month on record'] }, kpi);
-seq('bars', 'Quarterly Bars', 'slate', { sfx: sw, texts: ['Quarterly results', 'Revenue by quarter ($K)', 'Q1 Q2 Q3 Q4', '420 515 480 640'] }, bars);
-seq('growth', 'Growth Line', 'mist', { sfx: wh, texts: ['Growth', 'Active users over the last 12 months', 'Jan Apr Jul Oct Dec', '1.2 1.5 1.4 1.9 2.3 2.2 2.8 3.1 3.0 3.6 4.0 4.4', '4.4M'] }, growth);
-seq('share', 'Market Share', 'carbon', { dur: 7, sfx: sw, texts: ['Market share', 'Our place in the market', 'Us', 'Competitor A', 'Competitor B', 'Others', '34 26 22 18'] }, share);
-seq('dashboard', 'KPI Dashboard', 'deep', { dur: 7, sfx: sw, texts: ['This quarter', 'Revenue', '$4.2M', '+18%', 'New customers', '1,240', '+9%', 'Retention', '94%', '+2%'] }, tiles);
-seq('funnel', 'Sales Funnel', 'sand', { sfx: sw, texts: ['Sales funnel', 'Visitors', 'Leads', 'Trials', 'Customers', '48,000 6,200 1,450 380'] }, funnel);
+seq('actions', 'Action Items', 'slate', { dur: 7, sfx: sw, texts: ['Action items', 'Send the proposal', 'Alex', 'Fri', 'Book the venue', 'Priya', 'Mon', 'Update the price list', 'Sam', 'Wed'] }, actionItems);
+seq('faq', 'FAQ', 'mist', { dur: 7, sfx: pop, texts: ['Frequently asked', 'How long does setup take?', 'Most teams are up and running in a single afternoon, with no special training.', 'Q', 'A'] }, faq);
+seq('offer', 'Special Offer', 'carbon', { sfx: [['sfx-cha-ching', 0.6]], texts: ['Special offer', '20% off', 'your first order', 'Use code', 'WELCOME20', 'Ends 31 March'] }, offer);
+seq('promise', 'Our Promise', 'deep', { sfx: [['sfx-success', 0.9]], texts: ['Our promise', 'Love it, or your money back', 'If you’re not happy within 30 days, we’ll refund you in full. No questions asked.'] }, promise);
+seq('why-us', 'Why Choose Us', 'sand', { dur: 7, sfx: pop, texts: ['Why choose us', 'Fast', 'Most jobs done within a week', 'Friendly', 'Real people answer the phone', 'Fair', 'Clear prices, no surprises', 'Local', 'Proudly part of the community'] }, whyUs);
 seq('before-after', 'Before / After', 'white', { sfx: [['sfx-whoosh', 1.0]], texts: ['Before', 'After', '14 days', '2 days', 'to close a sale', 'Average time to close a sale'] }, beforeAfter);
 seq('problem', 'Problem → Solution', 'mist', { dur: 7, sfx: [['sfx-error', 0.4], ['sfx-success', 1.5]], texts: ['The problem', 'Teams lose hours every week hunting for files.', 'Our solution', 'One shared library that finds anything in seconds.'] }, problemSolution);
 seq('pillars', 'Three Pillars', 'sand', { dur: 7, sfx: pop, texts: ['How we work', 'Quality', 'Every detail checked twice', 'Speed', 'From idea to launch in weeks', 'Care', 'Support from real people'] }, pillars);
@@ -985,8 +1276,8 @@ seq('compare', 'Comparison Table', 'carbon', { dur: 7, sfx: sw, texts: ['How we 
 seq('pricing', 'Pricing Plans', 'white', { dur: 7, sfx: pop, texts: ['Simple pricing', 'Starter', '$9', 'Team', '$29', 'Business', '$79', 'per user / month', 'Most popular'] }, pricing);
 seq('org', 'Org Chart', 'mist', { dur: 7, sfx: sw, texts: ['Leadership team', 'Sam Rivera', 'Chief Executive', 'Priya Shah', 'Product', 'Leo Martin', 'Engineering', 'Dana Kim', 'Sales'] }, orgChart);
 seq('swot', 'SWOT', 'sand', { dur: 7, sfx: sw, texts: ['SWOT analysis', 'Strengths', 'Loyal customers and a strong brand', 'Weaknesses', 'A small sales team', 'Opportunities', 'New markets abroad', 'Threats', 'Rising costs'] }, swot);
-seq('market', 'Market Size', 'deep', { dur: 7, sfx: pop, texts: ['Market size', 'Total market', '$42B', 'Market we can reach', '$8B', 'Our target', '$1.2B'] }, nested);
-seq('survey', 'Survey Result', 'white', { sfx: pop, texts: ['8 in 10', 'customers would recommend us to a friend', 'Customer survey, 2026', '80'] }, people);
+seq('cycle', 'Work Cycle', 'deep', { dur: 7, sfx: sw, texts: ['How we work', 'Always getting better', 'Plan', 'Build', 'Review', 'Improve', 'Every project goes round this loop, and each turn makes the next one better.'] }, cycle);
+seq('visit', 'Visit Us', 'white', { sfx: [['sfx-drop', 0.9]], texts: ['Visit us', '12 Market Street, Springfield', 'Open Monday to Saturday', '9 am – 6 pm', 'Free parking behind the shop'] }, visitUs);
 seq('offices', 'Our Offices', 'slate', { sfx: [['sfx-drop', 0.9]], texts: ['Our offices', 'London', 'New York', 'Singapore', 'Sydney'] }, offices);
 seq('partners', 'Our Partners', 'mist', { sfx: sw, texts: ['Trusted by teams everywhere', 'Partner A', 'Partner B', 'Partner C', 'Partner D', 'Partner E', 'Partner F'] }, partners);
 seq('announcement', 'Announcement', 'carbon', { sfx: [['sfx-notify', 0.1]], texts: ['Announcement', 'We’re opening a new studio in Lisbon', 'Doors open in March 2027'] }, announce);
@@ -1000,10 +1291,23 @@ seq('award', 'Award', 'deep', { sfx: [['sfx-success', 0.4]], texts: ['Award', 'B
 seq('hiring', 'We’re Hiring', 'carbon', { sfx: pop, texts: ['We’re hiring', 'Come build with us', 'Product Designer', 'Software Engineer', 'Support Lead', 'careers.company.com'] }, hiring);
 seq('contact', 'Contact Us', 'white', { sfx: sw, texts: ['Get in touch', 'hello@company.com', '+1 555 010 0100', 'www.company.com'] }, contact);
 seq('cta', 'Call to Action', 'slate', { sfx: [['sfx-click', 1.95]], texts: ['Ready to get started?', 'Book a free demo', 'company.com/demo'] }, cta);
-seq('mix', 'Revenue Mix', 'sand', { dur: 7, sfx: sw, texts: ['Revenue mix', 'Where this year’s revenue came from', 'Subscriptions', 'Services', 'Hardware', '62 25 13'] }, splitBar);
-seq('yoy', 'Year over Year', 'carbon', { dur: 7, sfx: sw, texts: ['Year over year', 'Last year', 'This year', 'North South East West', '40 55 30 45', '52 61 44 58'] }, pairs);
-seq('goal', 'Goal Progress', 'mist', { sfx: [['sfx-riser', 0.2]], texts: ['Fundraising', '84%', 'of our $2M goal raised', '$1.68M from 412 donors'] }, goal);
+seq('dos-donts', 'Do’s and Don’ts', 'sand', { dur: 7, sfx: sw, texts: ['Do’s and don’ts', 'Do', 'Don’t', 'Reply within one day', 'Keep notes in one place', 'Ask when you’re not sure', 'Share passwords by email', 'Leave tasks without an owner', 'Guess at customer details'] }, dosDonts);
+seq('break', 'Short Break', 'carbon', { sfx: pop, texts: ['Short break', 'We’ll be right back', 'Grab a coffee and stretch your legs'] }, breakTime);
+seq('shoutout', 'Team Shout-out', 'mist', { sfx: [['sfx-pop', 0.2], ['sfx-success', 1.0]], texts: ['Shout-out', 'Priya Shah', 'For leading the spring launch and keeping everyone smiling.', 'PS', 'From the whole team'] }, shoutout);
 seq('takeaways', 'Key Takeaways', 'deep', { dur: 7, sfx: sw, texts: ['Key takeaways', 'Revenue grew 18% this year', 'Customer churn fell to 6%', 'We’re hiring in three new cities'] }, takeaways);
 seq('milestone', 'Milestone Reached', 'white', { sfx: [['sfx-success', 1.4]], texts: ['Milestone', '10,000', 'customers and counting', 'Thank you for being one of them'] }, milestoneReached);
+
+// Chart pieces from 1.5, retired in 1.6 because their charts could not match a real business's
+// numbers. They stay here, out of the library, so projects that already use them still show them.
+seq('bars', 'Quarterly Bars', 'slate', { retired: true, sfx: sw, texts: ['Quarterly results', 'Revenue by quarter ($K)', 'Q1 Q2 Q3 Q4', '420 515 480 640'] }, bars);
+seq('growth', 'Growth Line', 'mist', { retired: true, sfx: wh, texts: ['Growth', 'Active users over the last 12 months', 'Jan Apr Jul Oct Dec', '1.2 1.5 1.4 1.9 2.3 2.2 2.8 3.1 3.0 3.6 4.0 4.4', '4.4M'] }, growth);
+seq('share', 'Market Share', 'carbon', { retired: true, dur: 7, sfx: sw, texts: ['Market share', 'Our place in the market', 'Us', 'Competitor A', 'Competitor B', 'Others', '34 26 22 18'] }, share);
+seq('dashboard', 'KPI Dashboard', 'deep', { retired: true, dur: 7, sfx: sw, texts: ['This quarter', 'Revenue', '$4.2M', '+18%', 'New customers', '1,240', '+9%', 'Retention', '94%', '+2%'] }, tiles);
+seq('funnel', 'Sales Funnel', 'sand', { retired: true, sfx: sw, texts: ['Sales funnel', 'Visitors', 'Leads', 'Trials', 'Customers', '48,000 6,200 1,450 380'] }, funnel);
+seq('market', 'Market Size', 'deep', { retired: true, dur: 7, sfx: pop, texts: ['Market size', 'Total market', '$42B', 'Market we can reach', '$8B', 'Our target', '$1.2B'] }, nested);
+seq('survey', 'Survey Result', 'white', { retired: true, sfx: pop, texts: ['8 in 10', 'customers would recommend us to a friend', 'Customer survey, 2026', '80'] }, people);
+seq('mix', 'Revenue Mix', 'sand', { retired: true, dur: 7, sfx: sw, texts: ['Revenue mix', 'Where this year’s revenue came from', 'Subscriptions', 'Services', 'Hardware', '62 25 13'] }, splitBar);
+seq('yoy', 'Year over Year', 'carbon', { retired: true, dur: 7, sfx: sw, texts: ['Year over year', 'Last year', 'This year', 'North South East West', '40 55 30 45', '52 61 44 58'] }, pairs);
+seq('goal', 'Goal Progress', 'mist', { retired: true, sfx: [['sfx-riser', 0.2]], texts: ['Fundraising', '84%', 'of our $2M goal raised', '$1.68M from 412 donors'] }, goal);
 
 export const BIZ_SEQS = L;

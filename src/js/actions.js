@@ -10,9 +10,10 @@ import { effectById, filterById } from './templates/effects.js';
 import { transitionById } from './templates/transitions.js';
 import { AUDIO_LIBRARY, libraryAudioPath } from './templates/audiolib.js';
 import { toast } from './ui/widgets.js';
-import { packById, MIDROLL_CATS } from './templates/packs.js';
+import { packById } from './templates/packs.js';
+import { TIMER } from './templates/scenekit.js';
 import { videoTracks, projectDuration } from './state.js';
-import { EPS, mediaKind, baseName } from './util.js';
+import { EPS, mediaKind, baseName, clamp } from './util.js';
 import { brandClip } from './brand.js';
 
 export const app = { player: null, busy: null }; // filled in by app.js
@@ -116,6 +117,23 @@ export async function insertItem(pl, at) {
 // mid-rolls (Education, Professional) go in at the playhead: clips under it are split there and
 // everything after it moves along, so nothing is covered.
 // A drop places the pack at the drop point, stacking its layers upward from the dropped track.
+// Set a countdown clip (Activity Timer) to run for secs. Its background grows or shrinks with it, the
+// "time's up" sound stays at the end, and everything after it moves along so nothing is covered.
+// Changes the project directly: call it inside an edit.
+export function retimeTimer(c, secs) {
+  const nd = clamp(secs, 5, 3 * 3600) + TIMER.lead + TIMER.tail, delta = nd - c.duration;
+  if (Math.abs(delta) < EPS) return false;
+  const s0 = c.start, end = clipEnd(c);
+  for (const o of store.project.clips) {
+    if (o === c || trackById(o.trackId)?.locked) continue;
+    if (Math.abs(o.start - s0) < EPS && Math.abs(clipEnd(o) - end) < EPS) o.duration += delta;
+    else if (o.start >= end - EPS) o.start += delta;
+    else if (o.start > s0 + EPS && o.start >= end - TIMER.tail - EPS) o.start += delta;
+  }
+  c.duration = nd;
+  return true;
+}
+
 export async function insertPack(pack, at, quiet = false) {
   if (!pack) return;
   const made = [];
@@ -136,10 +154,10 @@ export async function insertPack(pack, at, quiet = false) {
   edit(() => {
     let t;
     if (at) t = at.time;
-    else if (pack.cat === 'Intros') {
+    else if (pack.role === 'intro') {
       t = 0;
       for (const o of store.project.clips) o.start += pack.dur;
-    } else if (MIDROLL_CATS.includes(pack.cat)) {
+    } else if (pack.role === 'mid') {
       t = Math.min(store.time, projectDuration());
       for (const o of [...store.project.clips]) if (o.start < t - EPS && clipEnd(o) > t + EPS && !trackById(o.trackId)?.locked) splitClip(o, t);
       for (const o of store.project.clips) if (o.start >= t - EPS) o.start += pack.dur;
