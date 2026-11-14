@@ -1,0 +1,85 @@
+/* Current on macOS. Every rule here is under html.mac (set in app.js on a Mac only), so Linux is untouched.
+   Same colors as app.css: pine-green chrome, teal accent, grey work areas. What changes is the shape:
+   the system font, frosted sidebars, the window buttons inside the top bar, Mac-sized controls,
+   sheets that drop from the top bar, and thin scrollbars. */
+
+html.mac {
+  --font: -apple-system, BlinkMacSystemFont, system-ui, 'Public Sans', sans-serif;
+  --radius: 10px;
+  --glass: rgba(23, 32, 28, 0.72);      /* --chrome over the window's frosted glass */
+  --glass-line: rgba(255, 255, 255, 0.07);
+  --focus: rgba(79, 179, 165, 0.55);    /* --accent as a focus ring */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- frosted glass ----------
+   The window itself is frosted (main.js). The page is see-through only where glass should show:
+   the top bar and the library's tab rail. Everything else stays opaque. (The start screen lies over the
+   editor, so its side panel stays solid pine: glass there would show the editor, not the desktop.) */
+html.mac, html.mac body, html.mac #app { background: transparent; }
+html.mac .panel.lib { background: transparent; }
+html.mac .lib-body { background: var(--bg1); }
+html.mac .workspace > .splitter, html.mac .hsplit { background: var(--bg0); }
+html.mac .lib-tabs { background: var(--glass); border-right-color: var(--glass-line); }
+html.mac .lib-tab { border-left: 0; margin: 0 6px; padding: 7px 2px; border-radius: 8px; }
+html.mac .lib-tab.active { background: rgba(79, 179, 165, 0.16); color: var(--accent); }
+html.mac .lib-tab:hover:not(.active) { background: rgba(255, 255, 255, 0.06); }
+
+/* ---------- top bar: window buttons on the left, title in the middle ---------- */
+html.mac .topbar { background: var(--glass); border-bottom-color: var(--glass-line); padding-left: 86px; }
+html.mac.fullscreen .topbar { padding-left: 12px; } /* no window buttons in full screen */
+html.mac .brand { font-size: 15px; }
+html.mac .brand img { width: 20px; height: 20px; }
+html.mac.native-menus .menu-btn { display: none; } /* the menus are in the system menu bar */
+html.mac .proj-name input[type=text] { font-weight: 600; font-size: 13px; background: transparent; border-color: transparent; }
+html.mac .proj-name input[type=text]:hover { border-color: rgba(255, 255, 255, 0.12); }
+html.mac .top-right .btn { height: 28px; }
+
+/* ---------- controls ---------- */
+html.mac .btn { height: 28px; border-radius: 7px; border-color: rgba(255, 255, 255, 0.09); background: rgba(255, 255, 255, 0.07); box-shadow: 0 0.5px 0 rgba(255, 255, 255, 0.08) inset, 0 1px 1.5px rgba(0, 0, 0, 0.35); }
+html.mac .btn:hover { background: rgba(255, 255, 255, 0.11); }
+html.mac .btn:active { background: rgba(255, 255, 255, 0.15); }
+html.mac .btn.primary { background: linear-gradient(to bottom, #5cc0b2, var(--accent)); border-color: transparent; box-shadow: 0 0.5px 0 rgba(255, 255, 255, 0.25) inset, 0 1px 2px rgba(0, 0, 0, 0.35); }
+html.mac .btn.primary:hover { background: linear-gradient(to bottom, #6fcabd, #5cc0b2); }
+html.mac .btn.big { height: 36px; border-radius: 9px; }
+html.mac .ibtn { border-radius: 7px; }
+html.mac input[type=text], html.mac input[type=number], html.mac select, html.mac textarea { border-radius: 7px; border-color: rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.22); }
+html.mac :is(input, select, textarea, button):focus-visible { outline: 3px solid var(--focus); outline-offset: 0; }
+html.mac input[type=range]::-webkit-slider-runnable-track { height: 3px; }
+html.mac input[type=range]::-webkit-slider-thumb { width: 16px; height: 16px; margin-top: -6.5px; box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.6), 0 0 0 0.5px rgba(0, 0, 0, 0.25); }
+
+/* segmented control (preview quality) */
+html.mac .seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: 8px; background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.07); }
+html.mac .seg .seg-native { display: none; }
+html.mac .seg-btn { height: 22px; min-width: 36px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent; color: var(--fg2); font-size: 11.5px; cursor: pointer; }
+html.mac .seg-btn:hover { color: var(--fg); }
+html.mac .seg-btn.on { background: rgba(255, 255, 255, 0.14); color: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+
+/* aspect-ratio picker on the start screen: one grouped control, like a segmented picker */
+html.mac .aspects { gap: 4px; padding: 4px; border-radius: 12px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.06); }
+html.mac .aspect { border: 0; border-radius: 9px; background: transparent; }
+html.mac .aspect:hover { background: rgba(255, 255, 255, 0.05); }
+html.mac .aspect.on { background: rgba(79, 179, 165, 0.18); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+
+/* ---------- start screen ---------- */
+html.mac .start-side { padding-top: 64px; }
+html.mac .start::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 40px; -webkit-app-region: drag; z-index: 1; } /* drag the window from the top edge */
+
+/* ---------- sheets: dialogs drop from the top bar ---------- */
+html.mac .modal-back { align-items: flex-start; background: rgba(0, 0, 0, 0.35); animation: mac-fade 0.18s ease-out; }
+html.mac .modal { margin-top: 52px; border-radius: 12px; border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.6), 0 24px 70px rgba(0, 0, 0, 0.55); animation: mac-sheet 0.24s cubic-bezier(0.2, 0.9, 0.3, 1); max-height: calc(100vh - 72px); }
+html.mac .modal-h { font-size: 15px; }
+@keyframes mac-sheet { from { transform: translateY(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes mac-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { html.mac .modal, html.mac .modal-back { animation: none; } }
+
+/* in-page menus (self-tests only on a Mac; real use has system menus) and tooltips */
+html.mac .dropdown { border-radius: 10px; background: rgba(40, 41, 44, 0.96); border-color: rgba(255, 255, 255, 0.1); }
+html.mac .dropdown .item { border-radius: 5px; padding: 5px 9px; }
+html.mac .dropdown .item:hover { background: var(--accent2); }
+
+/* ---------- thin scrollbars that show while the pointer is over the area ---------- */
+html.mac ::-webkit-scrollbar { width: 8px; height: 8px; }
+html.mac ::-webkit-scrollbar-thumb { background-color: transparent; border: 2px solid transparent; background-clip: padding-box; }
+html.mac :hover::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.22); }
+html.mac ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.36); }

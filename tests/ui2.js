@@ -1,8 +1,8 @@
 // Walkthrough of the newer features with screenshots: start screen templates, building every
 // template, crop mode, the tight selection box on a sticker, the audio panel, and audio previews.
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
-const M = new URL('./media/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
+const M = decodeURIComponent(new URL('./media/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = (n) => window.native.selftestCapture(OUT + n + '.png');

@@ -1,5 +1,5 @@
 // Reusable UI pieces: sliders, selects, colour pickers, menus, modals, toasts.
-import { h, icon, clamp } from '../util.js';
+import { h, icon, clamp, keys, keyLabel } from '../util.js';
 
 export function slider({ label, min = 0, max = 100, step = 1, value = 0, unit = '', onInput, onChange, onStart, fmt, reset }) {
   const range = h('input', { type: 'range', min, max, step, value });
@@ -28,6 +28,16 @@ export function select({ label, options, value, onChange }) {
   return label ? h('div.row', h('label', label), s) : s;
 }
 
+// macOS: a select with a few short choices drawn as a segmented control. The select stays (hidden)
+// and remains the source of truth, so code that reads or sets its value keeps working.
+export function segmentedFor(sel, tip) {
+  const btns = [...sel.options].map((o) => h('button.seg-btn', { type: 'button', onclick: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); paint(); } }, o.textContent));
+  const paint = () => btns.forEach((b, i) => b.classList.toggle('on', sel.options[i].value === sel.value));
+  sel.classList.add('seg-native');
+  paint();
+  return h('div.seg', { 'data-tip': tip || sel.title }, sel, ...btns);
+}
+
 export function toggle({ label, value, onChange }) {
   const inp = h('input', { type: 'checkbox', checked: !!value, onchange: () => onChange(inp.checked) });
   return h('div.row', h('label.grow', { style: { width: 'auto' } }, label), h('label.switch', inp, h('span')));
@@ -49,12 +59,29 @@ export function section(title, ...kids) {
 }
 
 let openMenu = null;
+// macOS: menus are drawn by the system (main.js builds them from this plain description).
+let nativeMenus = false;
+export const setNativeMenus = (on) => { nativeMenus = on; };
+export const usingNativeMenus = () => nativeMenus;
+// Turns menu items into data for main.js; each item's action is kept in runs[] under its id.
+export function menuData(items, runs, edit = {}) {
+  return items.filter(Boolean).map((it) => {
+    if (it === '-') return { sep: true };
+    const id = runs.push(it.run) - 1;
+    return { id, label: it.label, kbd: it.kbd, enabled: !it.disabled, edit: edit[it.label] };
+  });
+}
 export function closeMenu() { openMenu?.remove(); openMenu = null; document.querySelectorAll('.menu-btn.open').forEach((b) => b.classList.remove('open')); }
 export function showMenu(x, y, items) {
   closeMenu();
+  if (nativeMenus) {
+    const runs = [];
+    window.native.popupMenu(menuData(items, runs)).then((id) => { if (id != null) runs[id]?.(); });
+    return null;
+  }
   const m = h('div.dropdown', items.map((it) => {
     if (it === '-') return h('div.sep');
-    return h('div.item', { class: it.disabled ? 'item disabled' : 'item', onclick: () => { closeMenu(); it.run(); } }, it.icon ? icon(it.icon, 16) : h('span', { style: { width: '16px' } }), it.label, it.kbd ? h('span.kbd', it.kbd) : null);
+    return h('div.item', { class: it.disabled ? 'item disabled' : 'item', onclick: () => { closeMenu(); it.run(); } }, it.icon ? icon(it.icon, 16) : h('span', { style: { width: '16px' } }), it.label, it.kbd ? h('span.kbd', keyLabel(it.kbd)) : null);
   }));
   document.body.append(m);
   const r = m.getBoundingClientRect();
@@ -81,7 +108,7 @@ export function modal({ title, body, actions = [], width, onClose, closable = tr
 }
 
 export function toast(msg, kind = '', ms = 3200) {
-  const t = h(`div.toast${kind ? '.' + kind : ''}`, kind === 'err' ? icon('info', 16) : icon('check', 16), msg);
+  const t = h(`div.toast${kind ? '.' + kind : ''}`, kind === 'err' ? icon('info', 16) : icon('check', 16), keys(msg));
   document.getElementById('toasts').append(t);
   setTimeout(() => t.remove(), ms);
   return t;
@@ -100,7 +127,7 @@ let tipEl = null, tipFor = null, tipTimer = 0, tipGone = 0, tipWatch = 0;
 const isOff = (el) => el.disabled || el.classList.contains('disabled');
 function showTip(el) {
   const off = isOff(el) ? el.dataset.tipOff : '';
-  tipEl.replaceChildren(h('div', el.dataset.tip), ...(off ? [h('div.tip-off', off)] : []));
+  tipEl.replaceChildren(h('div', keys(el.dataset.tip)), ...(off ? [h('div.tip-off', keys(off))] : []));
   tipEl.classList.add('show');
   const r = el.getBoundingClientRect(), t = tipEl.getBoundingClientRect(), gap = 7;
   const fitsBelow = r.bottom + gap + t.height <= innerHeight - 4, fitsAbove = r.top - gap - t.height >= 4;

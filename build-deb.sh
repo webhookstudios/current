@@ -27,7 +27,7 @@ rm -f "$LIB/resources/default_app.asar"
 mv "$LIB/electron" "$LIB/current"
 chmod 4755 "$LIB/chrome-sandbox"
 
-cp "$ROOT/package.json" "$ROOT/main.js" "$ROOT/preload.js" "$APP/"
+cp "$ROOT/package.json" "$ROOT/main.js" "$ROOT/encoder.js" "$ROOT/preload.js" "$APP/"
 cp -r "$ROOT/src" "$APP/src"
 install -d "$APP/data"
 cp "$ROOT/data/$APP_ID.png" "$APP/data/"

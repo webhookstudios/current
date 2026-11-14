@@ -46,4 +46,10 @@ contextBridge.exposeInMainWorld('native', {
   selftestMouse: (x, y) => ipcRenderer.invoke('selftest:mouse', x, y),
   selftestDone: (code) => ipcRenderer.send('selftest:done', code),
   pathForFile: (file) => webUtils.getPathForFile(file),
+  // macOS menus (see main.js)
+  setAppMenu: call('menu:setApp'),
+  popupMenu: call('menu:popup'),
+  editText: call('edit:text'),
+  onMenuRun: (cb) => { ipcRenderer.on('menu:run', (_e, id) => cb(id)); },
+  onMenuEdit: (cb) => { ipcRenderer.on('menu:edit', (_e, op, id) => cb(op, id)); },
 });

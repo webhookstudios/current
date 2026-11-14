@@ -1,8 +1,8 @@
 // Finding features: the Clip and Tools menus, the toolbar and its hover tips, the right-click menu, the clip
 // panel jumping to a section, What's new and the grouped shortcuts. Needs tests/media/test1.mp4.
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
-const MEDIA = new URL('./media/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
+const MEDIA = decodeURIComponent(new URL('./media/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = (n) => window.native.selftestCapture(OUT + n + '.png');
@@ -112,7 +112,8 @@ try {
   document.querySelector('.modal-h .ibtn')?.click(); await wait(100);
   // View tabs and Alt shortcuts
   const view = (await openMenu('View')).map((i) => i.textContent);
-  check(view.some((t) => t.startsWith('Sequences') && t.endsWith('Alt+3')) && view.some((t) => t.startsWith('Stickers') && t.endsWith('Alt+8')), 'View lists all 8 library tabs, Sequences included, in sidebar order');
+  const { keyLabel } = await import(base + 'util.js'); // ⌥3 on a Mac, Alt+3 elsewhere
+  check(view.some((t) => t.startsWith('Sequences') && t.endsWith(keyLabel('Alt+3'))) && view.some((t) => t.startsWith('Stickers') && t.endsWith(keyLabel('Alt+8'))), 'View lists all 8 library tabs, Sequences included, in sidebar order');
   W.closeMenu();
   document.dispatchEvent(new KeyboardEvent('keydown', { key: '3', altKey: true, bubbles: true }));
   await wait(200);

@@ -1,7 +1,7 @@
 // Checks every title in 16:9, 9:16 and 1:1 for text colliding with lines or other text,
 // and writes a contact sheet of all titles for a visual check.
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 const { TITLES } = await import(base + 'templates/titles.js');
 const { drawTemplateTo } = await import(base + 'engine/renderer.js');
