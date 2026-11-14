@@ -117,7 +117,8 @@ const ffmpeg = {
   },
 
   remuxArgs(raw, out) {
-    return [...FF_BASE, '-i', raw, '-map', '0:v:0', '-c', 'copy', '-f', 'webm', out];
+    const mp4 = out.toLowerCase().endsWith('.mp4');
+    return [...FF_BASE, '-i', raw, '-map', '0:v:0', '-c', 'copy', ...(mp4 ? ['-movflags', '+faststart', '-f', 'mp4'] : ['-f', 'webm']), out];
   },
 
   // True when this ffmpeg has every encoder Current uses.

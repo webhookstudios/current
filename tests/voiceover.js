@@ -67,17 +67,19 @@ try {
   check(S.playing && document.querySelector('.stage .frame').classList.contains('recording'), 'recording: project playing, preview outlined');
   const stopBtn = panel.querySelector('button');
   check(stopBtn.textContent.includes('Stop recording'), `panel button says "${stopBtn.textContent}"`);
+  const recT0 = performance.now(); // the screenshot below can take a while on slower machines, so time the recording itself
   await wait(1200);
   await shot('vo-3-recording');
   await wait(1300);
   stopBtn.click();
+  const recLen = (performance.now() - recT0) / 1000;
   const c1 = await until(() => S.project.clips.find((c) => c.name === 'Voiceover 1'));
   check(!!c1, 'Voiceover 1 added to the timeline');
   if (c1) {
     const tr = st.trackById(c1.trackId);
     check(tr.kind === 'audio', `on audio track "${tr.name}"`);
     check(Math.abs(c1.start - 2) < 0.01, `starts at the playhead (${c1.start.toFixed(3)} s)`);
-    check(c1.duration > 2.2 && c1.duration < 3.0, `length matches the recording (${c1.duration.toFixed(2)} s)`);
+    check(c1.duration > 2.2 && Math.abs(c1.duration - recLen) < 0.4, `length matches the recording (${c1.duration.toFixed(2)} s for ${recLen.toFixed(2)} s)`);
     const m = st.mediaById(c1.mediaId);
     check(m.path.includes('voiceovers/Voiceover ') && m.path.endsWith('.wav') && await window.native.exists(m.path), `saved as ${m.path.split('/').slice(-2).join('/')}`);
     check(S.selection.has(c1.id), 'new clip is selected');

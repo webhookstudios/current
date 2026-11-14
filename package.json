@@ -12,11 +12,11 @@
     "start": "electron .",
     "test": "electron . --selftest=tests/smoke.js",
     "deb": "./build-deb.sh",
-    "mac": "electron-builder --mac dmg"
+    "mac": "./scripts/mac-build.sh"
   },
   "devDependencies": {
     "electron": "45.2.3",
-    "electron-builder": "26.0.12"
+    "electron-builder": "26.18.0"
   },
   "build": {
     "appId": "io.github.webhookstudios.Current",
@@ -34,6 +34,18 @@
       {
         "from": "vendor/mac/ffmpeg",
         "to": "bin/ffmpeg"
+      },
+      {
+        "from": "vendor/mac/whisper-cli",
+        "to": "bin/whisper-cli"
+      },
+      {
+        "from": "vendor/mac",
+        "to": "licenses",
+        "filter": [
+          "*-LICENSE.txt",
+          "*-SOURCE.txt"
+        ]
       }
     ],
     "mac": {
@@ -58,7 +70,10 @@
           "name": "Current project",
           "role": "Editor"
         }
-      ]
+      ],
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     },
     "dmg": {
       "title": "Current"

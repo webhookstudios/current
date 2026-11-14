@@ -44,7 +44,7 @@ export function initTimeline(el) {
   undoBtn = tb('undo', 'Undo (Ctrl+Z)', undo); undoBtn.dataset.tipOff = 'Nothing to undo yet';
   redoBtn = tb('redo', 'Redo (Ctrl+Shift+Z)', redo); redoBtn.dataset.tipOff = 'Nothing to redo';
   snapBtn = tb('magnet', 'Snapping (N): clips line up with each other and the playhead', () => { store.snap = !store.snap; snapBtn.classList.toggle('on', store.snap); }, '.on');
-  zoomRange = h('input', { type: 'range', min: 0, max: 100, step: 'any', value: zoomToSlider(store.zoom), 'data-tip': 'Zoom the timeline', oninput: () => setZoom(sliderToZoom(+zoomRange.value)) });
+  zoomRange = h('input', { type: 'range', min: 0, max: 100, step: IS_MAC ? 'any' : 1, value: zoomToSlider(store.zoom), 'data-tip': 'Zoom the timeline', oninput: () => setZoom(sliderToZoom(+zoomRange.value)) });
   paintZoom();
   capBtn = tb('cc', 'Captions: make them from the speech', () => (captionClips().length ? openCaptionEditor() : openCaptions()));
   const toolbar = h('div.tl-toolbar',
@@ -105,12 +105,14 @@ export function initTimeline(el) {
 }
 
 // ---------- zoom ----------
-// The slider is logarithmic on both sides of the default zoom (80 px/s), which sits in the middle.
+// macOS: the slider is logarithmic on both sides of the default zoom (80 px/s), which sits in the middle,
+// and its blue part ends at the thumb. Linux keeps its original slider.
 const ZMIN = 4, ZMID = 80, ZMAX = 400;
-const sliderToZoom = (v) => (v <= 50 ? ZMIN * Math.pow(ZMID / ZMIN, v / 50) : ZMID * Math.pow(ZMAX / ZMID, (v - 50) / 50));
-const zoomToSlider = (z) => (z <= ZMID ? 50 * Math.log(z / ZMIN) / Math.log(ZMID / ZMIN) : 50 + 50 * Math.log(z / ZMID) / Math.log(ZMAX / ZMID));
-// The blue part of the track ends at the thumb.
-const paintZoom = () => zoomRange.style.setProperty('--fill', `${zoomRange.value}%`);
+const sliderToZoom = (v) => (!IS_MAC ? 4 * Math.pow(400 / 4, v / 100)
+  : v <= 50 ? ZMIN * Math.pow(ZMID / ZMIN, v / 50) : ZMID * Math.pow(ZMAX / ZMID, (v - 50) / 50));
+const zoomToSlider = (z) => (!IS_MAC ? (Math.log(z / 4) / Math.log(100)) * 100
+  : z <= ZMID ? 50 * Math.log(z / ZMIN) / Math.log(ZMID / ZMIN) : 50 + 50 * Math.log(z / ZMID) / Math.log(ZMAX / ZMID));
+const paintZoom = () => { if (IS_MAC) zoomRange.style.setProperty('--fill', `${zoomRange.value}%`); };
 export function setZoom(z, anchorX) {
   const old = store.zoom;
   z = clamp(z, 4, 400);
@@ -123,8 +125,8 @@ export function setZoom(z, anchorX) {
   scroll.scrollLeft = tAt * z - ax;
 }
 export function zoomFit() {
-  // An empty project has nothing to fit: start at the default zoom, the middle of the slider.
-  if (!store.project.clips.length) { setZoom(ZMID, 0); scroll.scrollLeft = 0; return; }
+  // macOS: an empty project has nothing to fit, so it starts at the default zoom, the middle of the slider.
+  if (IS_MAC && !store.project.clips.length) { setZoom(ZMID, 0); scroll.scrollLeft = 0; return; }
   const d = Math.max(5, projectDuration());
   setZoom((scroll.clientWidth - 40) / d, 0);
   scroll.scrollLeft = 0;

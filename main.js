@@ -1,7 +1,7 @@
 // Current: Electron main process.
 // Owns windows, native dialogs, project files, media proxies and the export encoder (GStreamer on Linux, bundled ffmpeg on macOS).
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu, desktopCapturer, session, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, desktopCapturer, session, nativeTheme, systemPreferences } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -110,11 +110,19 @@ app.whenReady().then(() => {
   if (IS_MAC) nativeTheme.themeSource = 'dark'; // the editor is dark, so its glass, menus and dialogs are too
   fs.mkdirSync(CACHE(), { recursive: true });
   // Screen recording: the desktop asks the user which screen or window to share.
-  session.defaultSession.setDisplayMediaRequestHandler((_req, callback) => {
-    desktopCapturer.getSources({ types: ['screen', 'window'] })
-      .then((sources) => callback(sources[0] ? { video: sources[0] } : {}))
-      .catch(() => callback({}));
-  });
+  if (IS_MAC) {
+    // macOS 15 and newer: the system's own picker asks which screen or window to record. On older
+    // versions the handler runs instead and the page shows Current's picker (screen:pick).
+    session.defaultSession.setDisplayMediaRequestHandler((_req, callback) => {
+      pickScreen().then((src) => callback(src ? { video: src } : {})).catch(() => callback({}));
+    }, { useSystemPicker: true });
+  } else {
+    session.defaultSession.setDisplayMediaRequestHandler((_req, callback) => {
+      desktopCapturer.getSources({ types: ['screen', 'window'] })
+        .then((sources) => callback(sources[0] ? { video: sources[0] } : {}))
+        .catch(() => callback({}));
+    });
+  }
   if (process.platform === 'darwin' && app.dock) { try { app.dock.setIcon(path.join(__dirname, 'build', 'icon-1024.png')); } catch { /* packaged apps use the .icns */ } }
   createWindow();
 });
@@ -224,9 +232,10 @@ ipcMain.handle('recording:save', async (_e, data, name, ext = 'webm') => {
   await fs.promises.mkdir(dir, { recursive: true });
   let out = path.join(dir, `${name}.${ext}`);
   for (let i = 2; fs.existsSync(out); i++) out = path.join(dir, `${name} (${i}).${ext}`);
-  if (ext !== 'webm') { await fs.promises.writeFile(out, Buffer.from(data)); return out; }
+  // WebM everywhere, and on macOS the H.264 MP4 the recorder makes there, are rewrapped; WAV is written as is.
+  if (ext !== 'webm' && !(ext === 'mp4' && IS_MAC)) { await fs.promises.writeFile(out, Buffer.from(data)); return out; }
   // Video only (sound is saved separately as WAV): rewrap so the file has a duration and seek index.
-  const raw = path.join(CACHE(), `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.webm`);
+  const raw = path.join(CACHE(), `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`);
   await fs.promises.writeFile(raw, Buffer.from(data));
   const ok = await new Promise((resolve) => {
     const p = spawn(encoder.cmd(), encoder.remuxArgs(raw, out), { stdio: 'ignore' });
@@ -239,8 +248,11 @@ ipcMain.handle('recording:save', async (_e, data, name, ext = 'webm') => {
   return out;
 });
 
-// ---------- automatic captions (whisper.cpp from Ubuntu's archive; models downloaded once) ----------
-const WHISPER = () => process.env.CURRENT_WHISPER_CLI || '/usr/bin/whisper-cli';
+// ---------- automatic captions (whisper.cpp: Ubuntu's archive on Linux, bundled on macOS; models downloaded once) ----------
+// macOS: whisper-cli comes with the app (Contents/Resources/bin), or from vendor/mac/ in a checkout (scripts/mac-whisper.sh).
+const WHISPER = () => process.env.CURRENT_WHISPER_CLI || (IS_MAC
+  ? [path.join(process.resourcesPath || '', 'bin', 'whisper-cli'), path.join(__dirname, 'vendor', 'mac', 'whisper-cli')].find((p) => fs.existsSync(p)) || 'whisper-cli'
+  : '/usr/bin/whisper-cli');
 const MODELS = {
   standard: { file: 'ggml-base-q5_1.bin', size: 59707625, sha256: '422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898', dtw: 'base' },
   accurate: { file: 'ggml-small-q5_1.bin', size: 190085487, sha256: 'ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb', dtw: 'small' },
@@ -283,6 +295,8 @@ ipcMain.handle('captions:transcribe', async (_e, wavPath, id, lang) => {
   const base = path.join(CACHE(), `captions-${Date.now()}`);
   // -dtw aligns each word to the sound (whisper's own word times drift by seconds); it needs flash attention off
   const args = ['-m', modelPath(id), '-f', wavPath, '-l', lang || 'auto', '-ml', '1', '-sow', '-ojf', '-nfa', '-dtw', MODELS[id].dtw, '-of', base, '-pp', '-t', String(Math.max(2, Math.min(8, os.cpus().length - 1)))];
+  // Intel Macs: whisper.cpp's Metal path is made for Apple Silicon and times out on Intel graphics, so use the CPU.
+  if (IS_MAC && process.arch === 'x64') args.push('-ng');
   const code = await new Promise((resolve, reject) => {
     const p = spawn(WHISPER(), args, { stdio: ['ignore', 'ignore', 'pipe'] });
     whisperJob = p;
@@ -456,3 +470,30 @@ ipcMain.handle('menu:popup', async (_e, items) => new Promise((resolve) => {
 }));
 // Text commands for the focused text box.
 ipcMain.handle('edit:text', async (_e, op) => { if (['undo', 'redo', 'cut', 'copy', 'paste', 'selectAll'].includes(op)) win?.webContents[op](); });
+
+// ---------- macOS: screen picker and privacy permissions ----------
+let pickSeq = 0;
+async function pickScreen() {
+  const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 200 } });
+  if (!sources.length || !win) return null;
+  const id = ++pickSeq;
+  win.webContents.send('screen:pick', id, sources.map((s) => ({ id: s.id, name: s.name, thumb: s.thumbnail.toDataURL(), screen: s.id.startsWith('screen:') })));
+  const chosen = await new Promise((resolve) => {
+    const on = (_e, rid, sid) => { if (rid === id) { ipcMain.removeListener('screen:picked', on); resolve(sid); } };
+    ipcMain.on('screen:picked', on);
+  });
+  return sources.find((s) => s.id === chosen) || null;
+}
+// 'granted', 'denied', 'restricted' or 'not-determined'. Asking for the microphone or camera shows
+// the system's prompt the first time; Screen Recording can only be allowed in System Settings.
+ipcMain.handle('media:access', async (_e, kind) => {
+  if (!IS_MAC || !['microphone', 'camera', 'screen'].includes(kind)) return 'granted';
+  if (app.commandLine.hasSwitch('use-fake-device-for-media-stream')) return 'granted'; // self-tests use fake devices
+  const st = systemPreferences.getMediaAccessStatus(kind);
+  if (st === 'not-determined' && kind !== 'screen') return (await systemPreferences.askForMediaAccess(kind)) ? 'granted' : 'denied';
+  return st;
+});
+ipcMain.handle('media:openPrivacy', async (_e, kind) => {
+  const pane = { screen: 'Privacy_ScreenCapture', microphone: 'Privacy_Microphone', camera: 'Privacy_Camera' }[kind];
+  if (IS_MAC && pane) await shell.openExternal(`x-apple.systempreferences:com.apple.preference.security?${pane}`);
+});

@@ -26,7 +26,8 @@ try {
   check(!/M4\.9 4\.9/.test(svg('freeze')) && /rect/.test(svg('freeze')), 'freeze frame is a frame with pause bars, not a burst of rays');
   check(svg('sparkle') === svg('info') && !/M5\.6 5\.6/.test(svg('brand')), 'the burst-of-rays icon is gone; brand kits use a swatch book');
   // start screen
-  check(!!document.querySelector('.start-news'), 'the start screen links to What’s new');
+  const mac = /Mac/.test(navigator.platform); // the Mac start screen leaves What’s new to the Help menu
+  check(mac ? !document.querySelector('.start-news') : !!document.querySelector('.start-news'), mac ? 'the Mac start screen has no What’s new button' : 'the start screen links to What’s new');
   document.querySelector('.start button.primary')?.click();
   await shot('nav-0');
   W = await import(base + 'ui/widgets.js');

@@ -19,16 +19,21 @@ import { PROJECT_TEMPLATES } from './templates/projects.js';
 import { packById } from './templates/packs.js';
 import { drawPreview, makeThumbCanvas } from './ui/previews.js';
 import { showMenu, closeMenu, modal, toast, initTips, setNativeMenus, menuData } from './ui/widgets.js';
+import { initMacMedia } from './ui/macmedia.js';
 import {
   app, buildFromTemplate, splitAtPlayhead, deleteSelected, duplicateSelected, copySelected, cutSelected, paste, selectAll, freezeFrame, detachAudio, nudgeSelection,
 } from './actions.js';
 
-const FONT_FAMILIES = ['Montserrat', 'Poppins', 'Inter', 'Oswald', 'Bebas Neue', 'Anton', 'Archivo Black', 'Playfair Display', 'Abril Fatface', 'Lobster', 'Pacifico', 'Dancing Script', 'Great Vibes', 'Caveat', 'Permanent Marker', 'Bangers', 'Righteous', 'Orbitron', 'Monoton', 'Press Start 2P', 'Rubik Mono One', 'Space Grotesk'];
+const FONT_FAMILIES = ['Montserrat', 'Poppins', 'Inter', 'Oswald', 'Bebas Neue', 'Anton', 'Archivo Black', 'Playfair Display', 'Abril Fatface', 'Lobster', 'Pacifico', 'Dancing Script', 'Great Vibes', 'Caveat', 'Permanent Marker', 'Bangers', 'Righteous', 'Orbitron', 'Monoton', 'Press Start 2P', 'Rubik Mono One', 'Space Grotesk', ...(IS_MAC ? ['Noto Sans', 'DejaVu Serif', 'Liberation Mono'] : [])];
 
 let nameInput, dirtyDot;
 
 async function boot() {
   document.documentElement.classList.toggle('mac', IS_MAC); // macOS look: see html.mac in app.css
+  if (IS_MAC) { // fonts Ubuntu has installed, bundled for macOS
+    const css = h('link', { rel: 'stylesheet', href: 'css/mac-fonts.css' });
+    await new Promise((r) => { css.onload = css.onerror = r; document.head.append(css); });
+  }
   await Promise.all(FONT_FAMILIES.flatMap((f) => ['400', '700', '800', '900'].map((w) => document.fonts.load(`${w} 40px "${f}"`).catch(() => {}))));
   await document.fonts.load('40px "Noto Color Emoji"').catch(() => {});
   store.project = newProject();
@@ -55,7 +60,7 @@ async function boot() {
   initShortcuts();
   store.on('change', updateTitle);
   store.on('media', updateTitle);
-  if (IS_MAC) initMacMenus();
+  if (IS_MAC) { initMacMenus(); initMacMedia(); }
   window.addEventListener('dragover', (e) => e.preventDefault());
   window.addEventListener('drop', (e) => e.preventDefault());
   player.seek(0);
@@ -270,13 +275,12 @@ async function showStart() {
     startEl = h('div.start',
     h('div.start-side',
       h('div.start-logo', h('img', { src: LOGO, alt: '' }), 'Current'),
-      h('div.start-tag', 'A video editor with screen and voiceover recording, automatic captions, and built-in titles, transitions, effects, filters, stickers, intros, outros and music.'),
-      h('div.hint', 'Aspect ratio'),
-      asp,
+      IS_MAC ? null : h('div.start-tag', 'A video editor with screen and voiceover recording, automatic captions, and built-in titles, transitions, effects, filters, stickers, intros, outros and music.'),
+      ...(IS_MAC ? [h('div.start-size', h('div.hint', 'Aspect ratio'), asp)] : [h('div.hint', 'Aspect ratio'), asp]), // Mac: centred in the panel
       h('button.btn.primary.big', { onclick: () => { const ok = !store.dirty || !store.project.clips.length; if (!ok && !confirm('Discard the current project?')) return; loadProject(newProject({ aspect }), null); closeStart(); } }, icon('plus', 18), 'New Project'),
       h('button.btn.big', { onclick: () => openProject() }, icon('folder', 18), 'Open Project'),
       store.project.clips.length ? h('button.btn.ghost', { onclick: closeStart }, 'Back to current project') : null,
-      h('button.btn.ghost.start-news', { onclick: () => showWhatsNew() }, icon('news', 16), 'What’s new in 1.6'),
+      IS_MAC ? null : h('button.btn.ghost.start-news', { onclick: () => showWhatsNew() }, icon('news', 16), 'What’s new in 1.6'),
     ),
     h('div.start-main',
       h('h2', 'Recent projects'),
@@ -410,7 +414,7 @@ function initShortcuts() {
     const p = app.player;
     const fps = store.project.fps || 30;
     if (startEl) return;
-    const digit = /^[1-9]$/.test(k) ? k : /^Digit([1-9])$/.exec(e.code)?.[1]; // Option+1 types ¡ on a Mac, so fall back to the key's position
+    const digit = /^[1-9]$/.test(k) ? k : IS_MAC ? /^Digit([1-9])$/.exec(e.code)?.[1] : null; // Option+1 types ¡ on a Mac, so use the key's position there
     if (e.altKey && digit && TABS[+digit - 1]) { setTab(TABS[+digit - 1].id); e.preventDefault(); return; }
     switch (true) {
       case k === ' ': e.preventDefault(); p.toggle(); break;

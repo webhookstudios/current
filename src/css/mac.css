@@ -63,6 +63,10 @@ html.mac .aspect.on { background: rgba(79, 179, 165, 0.18); box-shadow: 0 1px 2p
 
 /* ---------- start screen ---------- */
 html.mac .start-side { padding-top: 64px; }
+/* the size picker sits in the middle of the panel: logo at the top, buttons at the bottom */
+html.mac .start-side { position: relative; }
+html.mac .start-size { position: absolute; left: 36px; right: 36px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; }
+html.mac .start-side > .btn.primary.big { margin-top: auto; }
 html.mac .start::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 40px; -webkit-app-region: drag; z-index: 1; } /* drag the window from the top edge */
 
 /* ---------- sheets: dialogs drop from the top bar ---------- */
@@ -83,3 +87,11 @@ html.mac ::-webkit-scrollbar { width: 8px; height: 8px; }
 html.mac ::-webkit-scrollbar-thumb { background-color: transparent; border: 2px solid transparent; background-clip: padding-box; }
 html.mac :hover::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.22); }
 html.mac ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.36); }
+
+/* screen picker (macOS 14 and older) */
+html.mac .sr-picker { display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; }
+html.mac .sr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+html.mac .sr-pick { display: flex; flex-direction: column; gap: 6px; padding: 6px; border-radius: 10px; border: 1px solid transparent; background: rgba(255, 255, 255, 0.04); color: var(--fg2); cursor: pointer; text-align: left; }
+html.mac .sr-pick:hover { border-color: var(--accent); color: var(--fg); }
+html.mac .sr-pick img { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; background: #000; border-radius: 6px; }
+html.mac .sr-pick span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; }
