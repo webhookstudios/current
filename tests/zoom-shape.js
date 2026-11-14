@@ -1,6 +1,6 @@
 // Zoom to area and clip shapes, checked on pixels: a 4-colour test image (red, green / blue, yellow).
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = (n) => window.native.selftestCapture(OUT + n + '.png');

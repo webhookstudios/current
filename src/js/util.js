@@ -8,6 +8,20 @@ export const lerp = (a, b, t) => a + (b - a) * t;
 export const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 export const EPS = 1e-4;
 
+// Shortcut labels are written the Linux way ("Ctrl+Shift+Z"). On macOS they are shown with the Mac's
+// symbols in its usual order (⌥⇧⌘Z); everywhere else the text is left exactly as written.
+export const IS_MAC = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
+const MAC_MOD = { Alt: '⌥', Shift: '⇧', Ctrl: '⌘' };
+const macCombo = (combo) => {
+  const parts = combo.split('+'), key = parts.pop();
+  const mods = Object.keys(MAC_MOD).filter((m) => parts.includes(m)).map((m) => MAC_MOD[m]).join('');
+  return mods + (/^Del(ete)?$/.test(key) ? '⌫' : key);
+};
+// Any text (tips, toasts): rewrites combos such as "Ctrl+Z" or "Alt+1…7"; plain words are left alone.
+export const keys = (text) => (IS_MAC && typeof text === 'string' ? text.replace(/\b(?:(?:Ctrl|Shift|Alt)\+)+[^\s,()/.]+/g, macCombo) : text);
+// A shortcut field (menus, the shortcuts list): also shows a lone Delete key as ⌫.
+export const keyLabel = (k) => (IS_MAC && /^Del(ete)?$/.test(k) ? '⌫' : keys(k));
+
 export const ease = {
   linear: (t) => t,
   inQuad: (t) => t * t,

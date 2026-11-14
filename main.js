@@ -1,11 +1,12 @@
 // Current: Electron main process.
-// Owns windows, native dialogs, project files, media proxies and the GStreamer export pipeline.
+// Owns windows, native dialogs, project files, media proxies and the export encoder (GStreamer on Linux, bundled ffmpeg on macOS).
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu, desktopCapturer, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, desktopCapturer, session, nativeTheme, systemPreferences } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { spawn, execFile } = require('child_process');
+const { spawn } = require('child_process');
+const encoder = require('./encoder');
 
 app.setName('Current');
 // Current was called Splice. Its settings, cache and recent projects are copied over the first
@@ -16,9 +17,11 @@ try {
     fs.cpSync(oldUser, app.getPath('userData'), { recursive: true });
 } catch (e) { /* starting fresh is fine */ }
 // Wayland/X11 auto-detection, and a stable WM class so the dock icon matches the .desktop file.
-app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
-// PipeWire screen capture goes through the desktop's own share dialog (xdg-desktop-portal).
-app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations,WebRTCPipeWireCapturer');
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
+  // PipeWire screen capture goes through the desktop's own share dialog (xdg-desktop-portal).
+  app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations,WebRTCPipeWireCapturer');
+}
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 const USER = () => app.getPath('userData');
@@ -27,6 +30,8 @@ const RECENT = () => path.join(USER(), 'recent.json');
 
 let win = null;
 let exportJob = null;
+const IS_MAC = process.platform === 'darwin';
+const SELFTEST = process.argv.find((a) => a.startsWith('--selftest='))?.slice(11);
 
 function createWindow() {
   win = new BrowserWindow({
@@ -38,6 +43,9 @@ function createWindow() {
     title: 'Current',
     icon: path.join(__dirname, 'data', 'io.github.webhookstudios.Current.png'),
     autoHideMenuBar: true,
+    // macOS: the window buttons sit inside Current's own top bar, and the sidebars show the desktop
+    // through frosted glass (the page leaves those areas see-through; see html.mac in app.css).
+    ...(IS_MAC ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 }, vibrancy: 'sidebar', visualEffectState: 'followWindow', backgroundColor: '#00000000' } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -48,7 +56,15 @@ function createWindow() {
       backgroundThrottling: false,
     },
   });
-  Menu.setApplicationMenu(null);
+  // Linux draws its own menus in the page. On macOS the page sends its menus here (menu:setApp) and
+  // they go in the system menu bar; until then a basic bar keeps ⌘C, ⌘V and ⌘Q working.
+  if (IS_MAC) {
+    setAppMenu(null);
+    // In full screen the window buttons are hidden, so the top bar drops the space it keeps for them.
+    const fs = (on) => win.webContents.executeJavaScript(`document.documentElement.classList.toggle('fullscreen', ${on})`).catch(() => {});
+    win.on('enter-full-screen', () => fs(true));
+    win.on('leave-full-screen', () => fs(false));
+  } else Menu.setApplicationMenu(null);
   win.loadFile(path.join(__dirname, 'src', 'index.html'));
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/.test(url)) shell.openExternal(url);
@@ -91,13 +107,23 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  if (IS_MAC) nativeTheme.themeSource = 'dark'; // the editor is dark, so its glass, menus and dialogs are too
   fs.mkdirSync(CACHE(), { recursive: true });
   // Screen recording: the desktop asks the user which screen or window to share.
-  session.defaultSession.setDisplayMediaRequestHandler((_req, callback) => {
-    desktopCapturer.getSources({ types: ['screen', 'window'] })
-      .then((sources) => callback(sources[0] ? { video: sources[0] } : {}))
-      .catch(() => callback({}));
-  });
+  if (IS_MAC) {
+    // macOS 15 and newer: the system's own picker asks which screen or window to record. On older
+    // versions the handler runs instead and the page shows Current's picker (screen:pick).
+    session.defaultSession.setDisplayMediaRequestHandler((_req, callback) => {
+      pickScreen().then((src) => callback(src ? { video: src } : {})).catch(() => callback({}));
+    }, { useSystemPicker: true });
+  } else {
+    session.defaultSession.setDisplayMediaRequestHandler((_req, callback) => {
+      desktopCapturer.getSources({ types: ['screen', 'window'] })
+        .then((sources) => callback(sources[0] ? { video: sources[0] } : {}))
+        .catch(() => callback({}));
+    });
+  }
+  if (process.platform === 'darwin' && app.dock) { try { app.dock.setIcon(path.join(__dirname, 'build', 'icon-1024.png')); } catch { /* packaged apps use the .icns */ } }
   createWindow();
 });
 app.on('window-all-closed', () => app.quit());
@@ -194,7 +220,7 @@ ipcMain.handle('voiceover:save', async (_e, data) => {
 });
 ipcMain.handle('shell:showItem', async (_e, p) => shell.showItemInFolder(p));
 ipcMain.handle('shell:openExternal', async (_e, url) => { if (/^https?:/.test(url)) await shell.openExternal(url); });
-ipcMain.handle('app:info', async () => ({ version: app.getVersion(), videos: app.getPath('videos'), home: os.homedir(), cpus: os.cpus().length }));
+ipcMain.handle('app:info', async () => ({ platform: process.platform, selftest: !!SELFTEST, version: app.getVersion(), videos: app.getPath('videos'), home: os.homedir(), cpus: os.cpus().length }));
 ipcMain.handle('win:setTitle', async (_e, t) => { if (win) win.setTitle(t); });
 ipcMain.handle('win:minimize', async () => { win?.minimize(); });
 ipcMain.handle('win:restore', async () => { if (win) { win.restore(); win.focus(); } });
@@ -206,13 +232,13 @@ ipcMain.handle('recording:save', async (_e, data, name, ext = 'webm') => {
   await fs.promises.mkdir(dir, { recursive: true });
   let out = path.join(dir, `${name}.${ext}`);
   for (let i = 2; fs.existsSync(out); i++) out = path.join(dir, `${name} (${i}).${ext}`);
-  if (ext !== 'webm') { await fs.promises.writeFile(out, Buffer.from(data)); return out; }
+  // WebM everywhere, and on macOS the H.264 MP4 the recorder makes there, are rewrapped; WAV is written as is.
+  if (ext !== 'webm' && !(ext === 'mp4' && IS_MAC)) { await fs.promises.writeFile(out, Buffer.from(data)); return out; }
   // Video only (sound is saved separately as WAV): rewrap so the file has a duration and seek index.
-  const raw = path.join(CACHE(), `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.webm`);
+  const raw = path.join(CACHE(), `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`);
   await fs.promises.writeFile(raw, Buffer.from(data));
-  const desc = `filesrc location=${gstQuote(raw)} ! matroskademux name=d matroskamux name=m ! filesink location=${gstQuote(out)} d.video_0 ! video/x-vp8 ! queue ! m.`;
   const ok = await new Promise((resolve) => {
-    const p = spawn('gst-launch-1.0', ['-q', '-e', ...desc.split(/ (?=(?:[^"]*"[^"]*")*[^"]*$)/)], { stdio: 'ignore' });
+    const p = spawn(encoder.cmd(), encoder.remuxArgs(raw, out), { stdio: 'ignore' });
     const limit = setTimeout(() => { try { p.kill('SIGKILL'); } catch { /* gone */ } }, 30000 + data.byteLength / 2e4);
     p.on('close', (code) => { clearTimeout(limit); resolve(code === 0 && fs.existsSync(out) && fs.statSync(out).size > 1000); });
     p.on('error', () => { clearTimeout(limit); resolve(false); });
@@ -222,8 +248,11 @@ ipcMain.handle('recording:save', async (_e, data, name, ext = 'webm') => {
   return out;
 });
 
-// ---------- automatic captions (whisper.cpp from Ubuntu's archive; models downloaded once) ----------
-const WHISPER = () => process.env.CURRENT_WHISPER_CLI || '/usr/bin/whisper-cli';
+// ---------- automatic captions (whisper.cpp: Ubuntu's archive on Linux, bundled on macOS; models downloaded once) ----------
+// macOS: whisper-cli comes with the app (Contents/Resources/bin), or from vendor/mac/ in a checkout (scripts/mac-whisper.sh).
+const WHISPER = () => process.env.CURRENT_WHISPER_CLI || (IS_MAC
+  ? [path.join(process.resourcesPath || '', 'bin', 'whisper-cli'), path.join(__dirname, 'vendor', 'mac', 'whisper-cli')].find((p) => fs.existsSync(p)) || 'whisper-cli'
+  : '/usr/bin/whisper-cli');
 const MODELS = {
   standard: { file: 'ggml-base-q5_1.bin', size: 59707625, sha256: '422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898', dtw: 'base' },
   accurate: { file: 'ggml-small-q5_1.bin', size: 190085487, sha256: 'ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb', dtw: 'small' },
@@ -266,6 +295,8 @@ ipcMain.handle('captions:transcribe', async (_e, wavPath, id, lang) => {
   const base = path.join(CACHE(), `captions-${Date.now()}`);
   // -dtw aligns each word to the sound (whisper's own word times drift by seconds); it needs flash attention off
   const args = ['-m', modelPath(id), '-f', wavPath, '-l', lang || 'auto', '-ml', '1', '-sow', '-ojf', '-nfa', '-dtw', MODELS[id].dtw, '-of', base, '-pp', '-t', String(Math.max(2, Math.min(8, os.cpus().length - 1)))];
+  // Intel Macs: whisper.cpp's Metal path is made for Apple Silicon and times out on Intel graphics, so use the CPU.
+  if (IS_MAC && process.arch === 'x64') args.push('-ng');
   const code = await new Promise((resolve, reject) => {
     const p = spawn(WHISPER(), args, { stdio: ['ignore', 'ignore', 'pipe'] });
     whisperJob = p;
@@ -314,7 +345,6 @@ ipcMain.handle('recent:remove', async (_e, p) => {
 
 // ---------- media proxies ----------
 // Files Chromium cannot decode (AVI, MTS, odd codecs) are transcoded once to an H.264/AAC MP4 in the cache.
-const gstQuote = (p) => `"${String(p).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 const proxyJobs = new Map();
 
 ipcMain.handle('media:proxy', async (e, src) => {
@@ -326,11 +356,7 @@ ipcMain.handle('media:proxy', async (e, src) => {
   const job = new Promise((resolve, reject) => {
     const tmp = out + '.part';
     const run = (withAudio) => {
-      const args = ['-q', '-e',
-        `filesrc location=${gstQuote(src)} ! decodebin name=d`,
-        `d. ! queue ! videoconvert ! video/x-raw,format=I420 ! x264enc speed-preset=veryfast pass=qual quantizer=20 key-int-max=30 ! queue ! mp4mux name=m faststart=true ! filesink location=${gstQuote(tmp)}`];
-      if (withAudio) args.push('d. ! queue ! audioconvert ! audioresample ! audio/x-raw,rate=48000 ! avenc_aac bitrate=192000 ! queue ! m.');
-      const p = spawn('gst-launch-1.0', args.join(' ').split(/ (?=(?:[^"]*"[^"]*")*[^"]*$)/), { stdio: ['ignore', 'ignore', 'pipe'] });
+      const p = spawn(encoder.cmd(), encoder.proxyArgs(src, tmp, withAudio), { stdio: ['ignore', 'ignore', 'pipe'] });
       let err = '';
       p.stderr.on('data', (d) => { err += d; });
       p.on('close', (code) => {
@@ -346,28 +372,7 @@ ipcMain.handle('media:proxy', async (e, src) => {
 });
 
 // ---------- export ----------
-// Frames arrive from the renderer as raw RGBA and are fed to gst-launch over stdin.
-function buildExportArgs(o) {
-  const loc = gstQuote(o.path);
-  const raw = `fdsrc fd=0 blocksize=${o.width * o.height * 4} ! queue max-size-buffers=8 ! rawvideoparse width=${o.width} height=${o.height} format=rgba framerate=${o.fps}/1 ! videoconvert ! videoflip method=vertical-flip`;
-  const q = { high: 17, medium: 21, low: 26 }[o.quality] ?? 21;
-  const audio = o.audioPath ? `filesrc location=${gstQuote(o.audioPath)} ! wavparse ! audioconvert ! audioresample ! audio/x-raw,rate=48000,channels=2` : null;
-  const parts = [];
-  if (o.format === 'mp3') {
-    parts.push(`${audio} ! lamemp3enc target=bitrate bitrate=256 cbr=true ! filesink location=${loc}`);
-  } else if (o.format === 'webm') {
-    const cpu = { high: 2, medium: 4, low: 6 }[o.quality] ?? 4;
-    const br = Math.round(o.width * o.height * o.fps * ({ high: 0.12, medium: 0.07, low: 0.04 }[o.quality] ?? 0.07) / 1000);
-    parts.push(`${raw} ! video/x-raw,format=I420 ! vp9enc deadline=1 cpu-used=${cpu} row-mt=true threads=${Math.max(2, os.cpus().length - 1)} target-bitrate=${br * 1000} end-usage=vbr keyframe-max-dist=${o.fps * 4} ! queue ! webmmux name=m ! filesink location=${loc}`);
-    if (audio) parts.push(`${audio} ! opusenc bitrate=160000 ! queue ! m.`);
-  } else if (o.format === 'mov' || o.format === 'mp4') {
-    const mux = o.format === 'mov' ? 'qtmux' : 'mp4mux';
-    const preset = { high: 'slow', medium: 'medium', low: 'veryfast' }[o.quality] ?? 'medium';
-    parts.push(`${raw} ! video/x-raw,format=I420 ! x264enc speed-preset=${preset} pass=qual quantizer=${q} key-int-max=${o.fps * 2} threads=0 ! video/x-h264,profile=high ! queue ! ${mux} name=m faststart=true ! filesink location=${loc}`);
-    if (audio) parts.push(`${audio} ! avenc_aac bitrate=256000 ! queue ! m.`);
-  }
-  return ['-q', '-e', ...parts.join(' ').split(/ (?=(?:[^"]*"[^"]*")*[^"]*$)/)];
-}
+// Frames arrive from the renderer as raw RGBA and are fed to the encoder over stdin (see encoder.js).
 
 function cancelExport() {
   if (!exportJob) return;
@@ -385,9 +390,9 @@ ipcMain.handle('export:start', async (_e, opts) => {
     await fs.promises.writeFile(opts.audioPath, Buffer.from(opts.audioWav));
     delete opts.audioWav;
   }
-  const args = buildExportArgs(opts);
-  if (process.argv.includes('--log') || process.argv.some((a) => a.startsWith('--selftest'))) console.log('[export] gst-launch-1.0', JSON.stringify(args));
-  const proc = spawn('gst-launch-1.0', args, { stdio: ['pipe', 'ignore', 'pipe'] });
+  const args = encoder.exportArgs(opts);
+  if (process.argv.includes('--log') || process.argv.some((a) => a.startsWith('--selftest'))) console.log('[export]', encoder.cmd(), JSON.stringify(args));
+  const proc = spawn(encoder.cmd(), args, { stdio: ['pipe', 'ignore', 'pipe'] });
   const job = { proc, opts, err: '', done: null };
   job.done = new Promise((resolve) => {
     proc.on('close', (code) => resolve({ code, err: job.err }));
@@ -422,6 +427,73 @@ ipcMain.handle('export:finish', async () => {
 
 ipcMain.handle('export:cancel', async () => { cancelExport(); return true; });
 
-ipcMain.handle('gst:check', async () => new Promise((resolve) => {
-  execFile('gst-inspect-1.0', ['x264enc'], (err) => resolve(!err));
+ipcMain.handle('gst:check', async () => encoder.check());
+
+// ---------- macOS menus ----------
+// The page describes its menus as plain data: { label, items: [{ id, label, kbd, enabled, edit } | { sep: true }] }.
+// Shortcuts are only shown, not registered, because the page already handles those keys; the Edit menu's
+// text commands are registered so they also work in text boxes (the page decides: text box or clips).
+const accel = (kbd) => {
+  if (!kbd) return undefined;
+  const k = String(kbd).split(' / ')[0].replace('Ctrl+', 'CmdOrCtrl+').replace(/\bDel(ete)?$/, 'Backspace').replace(/−$/, '-').replace(/\+\+$/, '+Plus');
+  return k === '+' ? 'Plus' : k === '?' ? 'Shift+/' : k;
+};
+const EDIT_ROLES = { undo: 'CmdOrCtrl+Z', redo: 'Shift+CmdOrCtrl+Z', cut: 'CmdOrCtrl+X', copy: 'CmdOrCtrl+C', paste: 'CmdOrCtrl+V', selectAll: 'CmdOrCtrl+A' };
+function menuItems(items, onPick) {
+  return items.map((it) => {
+    if (it.sep) return { type: 'separator' };
+    if (it.edit) return { label: it.label, accelerator: EDIT_ROLES[it.edit], click: () => win?.webContents.send('menu:edit', it.edit, it.id) };
+    return { label: it.label, enabled: it.enabled !== false, accelerator: accel(it.kbd), registerAccelerator: false, click: () => onPick(it.id) };
+  });
+}
+function setAppMenu(menus) {
+  const pick = (id) => win?.webContents.send('menu:run', id);
+  const page = menus || [{ label: 'Edit', items: Object.keys(EDIT_ROLES).map((op) => ({ label: op === 'selectAll' ? 'Select All' : op[0].toUpperCase() + op.slice(1), edit: op })) }];
+  const help = page.find((m) => m.label === 'Help');
+  const about = help?.items.find((i) => /^About/.test(i.label || ''));
+  const tpl = [
+    { label: app.name, submenu: [
+      about ? { label: about.label, click: () => pick(about.id) } : { role: 'about' },
+      { type: 'separator' }, { role: 'services' }, { type: 'separator' },
+      { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }] },
+    ...page.filter((m) => m !== help).map((m) => ({ label: m.label, submenu: menuItems(m.items, pick) })),
+    { role: 'windowMenu' },
+  ];
+  if (help) tpl.push({ role: 'help', submenu: menuItems(help.items.filter((i) => i !== about), pick) });
+  Menu.setApplicationMenu(Menu.buildFromTemplate(tpl));
+}
+ipcMain.handle('menu:setApp', async (_e, menus) => { if (IS_MAC) setAppMenu(menus); });
+// Right-click menus: resolves with the chosen item's id, or null when the menu closes without a choice.
+ipcMain.handle('menu:popup', async (_e, items) => new Promise((resolve) => {
+  const m = Menu.buildFromTemplate(menuItems(items, (id) => resolve(id)));
+  m.popup({ window: win, callback: () => setTimeout(() => resolve(null), 100) });
 }));
+// Text commands for the focused text box.
+ipcMain.handle('edit:text', async (_e, op) => { if (['undo', 'redo', 'cut', 'copy', 'paste', 'selectAll'].includes(op)) win?.webContents[op](); });
+
+// ---------- macOS: screen picker and privacy permissions ----------
+let pickSeq = 0;
+async function pickScreen() {
+  const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 200 } });
+  if (!sources.length || !win) return null;
+  const id = ++pickSeq;
+  win.webContents.send('screen:pick', id, sources.map((s) => ({ id: s.id, name: s.name, thumb: s.thumbnail.toDataURL(), screen: s.id.startsWith('screen:') })));
+  const chosen = await new Promise((resolve) => {
+    const on = (_e, rid, sid) => { if (rid === id) { ipcMain.removeListener('screen:picked', on); resolve(sid); } };
+    ipcMain.on('screen:picked', on);
+  });
+  return sources.find((s) => s.id === chosen) || null;
+}
+// 'granted', 'denied', 'restricted' or 'not-determined'. Asking for the microphone or camera shows
+// the system's prompt the first time; Screen Recording can only be allowed in System Settings.
+ipcMain.handle('media:access', async (_e, kind) => {
+  if (!IS_MAC || !['microphone', 'camera', 'screen'].includes(kind)) return 'granted';
+  if (app.commandLine.hasSwitch('use-fake-device-for-media-stream')) return 'granted'; // self-tests use fake devices
+  const st = systemPreferences.getMediaAccessStatus(kind);
+  if (st === 'not-determined' && kind !== 'screen') return (await systemPreferences.askForMediaAccess(kind)) ? 'granted' : 'denied';
+  return st;
+});
+ipcMain.handle('media:openPrivacy', async (_e, kind) => {
+  const pane = { screen: 'Privacy_ScreenCapture', microphone: 'Privacy_Microphone', camera: 'Privacy_Camera' }[kind];
+  if (IS_MAC && pane) await shell.openExternal(`x-apple.systempreferences:com.apple.preference.security?${pane}`);
+});

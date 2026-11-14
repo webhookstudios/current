@@ -3,7 +3,7 @@
 // placed as title clips on a Captions track. Each caption can be edited like any title, or all
 // of them at once in Edit captions. Captions can be burned into the video, saved as an .srt file
 // next to it, or both.
-import { h, icon, clamp } from '../util.js';
+import { h, icon, clamp, IS_MAC } from '../util.js';
 import { store, edit, makeClip, addClip, videoTracks, ensureTrack, selectedClips, projectDuration, mediaById, select, removeClips } from '../state.js';
 import { app } from '../actions.js';
 import { TITLES, titleById } from '../templates/titles.js';
@@ -152,6 +152,7 @@ export async function openCaptions() {
   const mb = (n) => `${Math.round(n / 1e6)} MB`;
   function paint() {
     body.replaceChildren(
+      !status.engine && IS_MAC ? h('div.cap-warn', icon('info', 16), h('div', h('b', 'Speech recognition is missing from this copy of Current.'), h('div', 'It comes with Current for Mac. Install Current again from its .dmg, then reopen this window.'))) :
       !status.engine ? h('div.cap-warn', icon('info', 16), h('div', h('b', 'Speech recognition is not installed yet.'), h('div', 'Install it once from Ubuntu’s software archive, then press Check again:'), h('div.cap-cmd', h('code', 'sudo apt install whisper.cpp'), h('button.btn.small', { onclick: () => navigator.clipboard.writeText('sudo apt install whisper.cpp').then(() => toast('Copied')) }, icon('copy', 13), 'Copy'), h('button.btn.small', { onclick: async () => { Object.assign(status, await window.native.captionsStatus()); paint(); refresh(); } }, 'Check again')))) : null,
       h('div.row', h('label', 'Captions for'), h('div.chips', chip('source', 'voices', `All voices (${voices.length} clip${voices.length === 1 ? '' : 's'})`), sel ? chip('source', 'selected', 'The selected clip') : null)),
       h('div.row', h('label', 'Language'), h('select.grow', { onchange: (e) => { o.lang = e.target.value; } }, LANGS.map(([v, n]) => h('option', { value: v, selected: o.lang === v }, n)))),

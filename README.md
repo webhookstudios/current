@@ -130,6 +130,46 @@ Or run it straight from the checkout with `npm start`.
 
 Hover any button to see what it does; a greyed-out one also says what to select first. Press **?** in the app for all keyboard shortcuts, and see **Help › What’s new** for the newest features and where to find them.
 
+## Current for Mac
+
+Current also runs on macOS 12 or newer, on Apple Silicon and Intel Macs, from the same code. The Mac version has the menus in the menu bar, ⌘ shortcuts, its own app icon, and everything it needs inside the app: video export uses a bundled ffmpeg, and captions use a bundled whisper.cpp with Metal. Nothing else needs installing.
+
+### Install on a Mac
+
+Download `Current-1.6.0-universal.dmg` from the [latest release](https://github.com/webhookstudios/current/releases/latest), open it and drag **Current** to Applications.
+
+This build is not signed with an Apple Developer ID yet, so the first time macOS says it cannot check it for malware. Open it once from Finder with Control-click › **Open**, or allow it in **System Settings › Privacy & Security**.
+
+Screen recording needs **Screen & System Audio Recording** turned on for Current in **System Settings › Privacy & Security**; macOS asks for the microphone and camera the first time they are used.
+
+### Build the Mac app
+
+On a Mac with the Xcode Command Line Tools (`xcode-select --install`) and Node.js:
+
+```bash
+npm install
+```
+
+```bash
+./scripts/mac-tools.sh
+```
+
+```bash
+./scripts/mac-whisper.sh
+```
+
+```bash
+npx electron scripts/mac-icon.js
+```
+
+```bash
+npm run mac
+```
+
+`mac-tools.sh` fetches a standalone ffmpeg and `mac-whisper.sh` builds `whisper-cli`; both go in `vendor/mac/`, which is not in git. `mac-icon.js` renders `build/icon.icns` from `build/icon-mac.svg`. The universal `.dmg` is written to `dist/` (it is built in a temporary folder first, because macOS will not sign files in iCloud-synced folders such as Desktop). To run from the checkout instead, use `npm start` after the two scripts.
+
+Tests run the same way as on Ubuntu. `tests/make-media.sh` uses the bundled ffmpeg on a Mac.
+
 ## Building the package
 
 ```bash
@@ -178,8 +218,8 @@ The smoke test compiles every shader, draws every template at several points in 
 
 ## How it works
 
-The editor is an Electron app. Each frame is composited in WebGL 2: every clip is placed into a frame-sized layer (transform, crop, chroma key), graded, run through its effects, mixed with its neighbour by a transition shader and blended onto the layers below. Titles, stickers and backgrounds are drawn with Canvas 2D. Audio plays through Web Audio effect chains. Export renders frame by frame with frame-exact seeking, mixes the audio offline through the same effect chains, and pipes raw frames and audio into GStreamer (x264, VP9, AAC, Opus, LAME).
+The editor is an Electron app. Each frame is composited in WebGL 2: every clip is placed into a frame-sized layer (transform, crop, chroma key), graded, run through its effects, mixed with its neighbour by a transition shader and blended onto the layers below. Titles, stickers and backgrounds are drawn with Canvas 2D. Audio plays through Web Audio effect chains. Export renders frame by frame with frame-exact seeking, mixes the audio offline through the same effect chains, and pipes raw frames and audio into GStreamer on Ubuntu, or the bundled ffmpeg on a Mac (x264, VP9, AAC, Opus, LAME).
 
 ## License
 
-GPL-2.0-or-later. Bundled fonts are under the SIL Open Font License 1.1.
+GPL-2.0-or-later. Bundled fonts are under the SIL Open Font License 1.1, except DejaVu Serif (its own free licence, `src/fonts/LICENSE-DejaVu.txt`). The Mac app also includes ffmpeg (GPL-3.0-or-later; its licence and a link to its exact source are in the app's `Contents/Resources/licenses`) and whisper.cpp (MIT).

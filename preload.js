@@ -46,4 +46,14 @@ contextBridge.exposeInMainWorld('native', {
   selftestMouse: (x, y) => ipcRenderer.invoke('selftest:mouse', x, y),
   selftestDone: (code) => ipcRenderer.send('selftest:done', code),
   pathForFile: (file) => webUtils.getPathForFile(file),
+  // macOS menus (see main.js)
+  setAppMenu: call('menu:setApp'),
+  popupMenu: call('menu:popup'),
+  editText: call('edit:text'),
+  // macOS privacy and the screen picker (see main.js)
+  mediaAccess: call('media:access'),
+  openPrivacy: call('media:openPrivacy'),
+  onScreenPick: (cb) => { ipcRenderer.on('screen:pick', async (_e, id, list) => ipcRenderer.send('screen:picked', id, await cb(list))); },
+  onMenuRun: (cb) => { ipcRenderer.on('menu:run', (_e, id) => cb(id)); },
+  onMenuEdit: (cb) => { ipcRenderer.on('menu:edit', (_e, op, id) => cb(op, id)); },
 });

@@ -11,9 +11,72 @@
   "scripts": {
     "start": "electron .",
     "test": "electron . --selftest=tests/smoke.js",
-    "deb": "./build-deb.sh"
+    "deb": "./build-deb.sh",
+    "mac": "./scripts/mac-build.sh"
   },
   "devDependencies": {
-    "electron": "45.2.3"
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "io.github.webhookstudios.Current",
+    "productName": "Current",
+    "copyright": "webhookstudios",
+    "files": [
+      "package.json",
+      "main.js",
+      "encoder.js",
+      "preload.js",
+      "src/**/*",
+      "data/io.github.webhookstudios.Current.png"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/mac/ffmpeg",
+        "to": "bin/ffmpeg"
+      },
+      {
+        "from": "vendor/mac/whisper-cli",
+        "to": "bin/whisper-cli"
+      },
+      {
+        "from": "vendor/mac",
+        "to": "licenses",
+        "filter": [
+          "*-LICENSE.txt",
+          "*-SOURCE.txt"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.video",
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Current uses the microphone to record voiceovers.",
+        "NSCameraUsageDescription": "Current uses the camera to record webcam clips.",
+        "NSScreenCaptureUsageDescription": "Current records your screen when you ask it to."
+      },
+      "fileAssociations": [
+        {
+          "ext": "splice",
+          "name": "Current project",
+          "role": "Editor"
+        }
+      ],
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "Current"
+    }
   }
 }

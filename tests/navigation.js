@@ -1,8 +1,8 @@
 // Finding features: the Clip and Tools menus, the toolbar and its hover tips, the right-click menu, the clip
 // panel jumping to a section, What's new and the grouped shortcuts. Needs tests/media/test1.mp4.
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
-const MEDIA = new URL('./media/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
+const MEDIA = decodeURIComponent(new URL('./media/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = (n) => window.native.selftestCapture(OUT + n + '.png');
@@ -26,7 +26,8 @@ try {
   check(!/M4\.9 4\.9/.test(svg('freeze')) && /rect/.test(svg('freeze')), 'freeze frame is a frame with pause bars, not a burst of rays');
   check(svg('sparkle') === svg('info') && !/M5\.6 5\.6/.test(svg('brand')), 'the burst-of-rays icon is gone; brand kits use a swatch book');
   // start screen
-  check(!!document.querySelector('.start-news'), 'the start screen links to What’s new');
+  const mac = /Mac/.test(navigator.platform); // the Mac start screen leaves What’s new to the Help menu
+  check(mac ? !document.querySelector('.start-news') : !!document.querySelector('.start-news'), mac ? 'the Mac start screen has no What’s new button' : 'the start screen links to What’s new');
   document.querySelector('.start button.primary')?.click();
   await shot('nav-0');
   W = await import(base + 'ui/widgets.js');
@@ -112,7 +113,8 @@ try {
   document.querySelector('.modal-h .ibtn')?.click(); await wait(100);
   // View tabs and Alt shortcuts
   const view = (await openMenu('View')).map((i) => i.textContent);
-  check(view.some((t) => t.startsWith('Sequences') && t.endsWith('Alt+3')) && view.some((t) => t.startsWith('Stickers') && t.endsWith('Alt+8')), 'View lists all 8 library tabs, Sequences included, in sidebar order');
+  const { keyLabel } = await import(base + 'util.js'); // ⌥3 on a Mac, Alt+3 elsewhere
+  check(view.some((t) => t.startsWith('Sequences') && t.endsWith(keyLabel('Alt+3'))) && view.some((t) => t.startsWith('Stickers') && t.endsWith(keyLabel('Alt+8'))), 'View lists all 8 library tabs, Sequences included, in sidebar order');
   W.closeMenu();
   document.dispatchEvent(new KeyboardEvent('keydown', { key: '3', altKey: true, bubbles: true }));
   await wait(200);

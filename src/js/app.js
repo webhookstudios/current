@@ -1,5 +1,5 @@
 // Current: application bootstrap, top bar, menus, start screen, shortcuts and project files.
-import { h, icon, clamp, fmtDur } from './util.js';
+import { h, icon, clamp, fmtDur, keyLabel, IS_MAC } from './util.js';
 import { store, newProject, undo, redo, ASPECTS, changed, select } from './state.js';
 import { Compositor } from './engine/renderer.js';
 import { Player } from './engine/player.js';
@@ -18,16 +18,22 @@ import { clipItems, toolsItems, selectedClip, inspect } from './ui/clipmenu.js';
 import { PROJECT_TEMPLATES } from './templates/projects.js';
 import { packById } from './templates/packs.js';
 import { drawPreview, makeThumbCanvas } from './ui/previews.js';
-import { showMenu, closeMenu, modal, toast, initTips } from './ui/widgets.js';
+import { showMenu, closeMenu, modal, toast, initTips, setNativeMenus, menuData } from './ui/widgets.js';
+import { initMacMedia } from './ui/macmedia.js';
 import {
   app, buildFromTemplate, splitAtPlayhead, deleteSelected, duplicateSelected, copySelected, cutSelected, paste, selectAll, freezeFrame, detachAudio, nudgeSelection,
 } from './actions.js';
 
-const FONT_FAMILIES = ['Montserrat', 'Poppins', 'Inter', 'Oswald', 'Bebas Neue', 'Anton', 'Archivo Black', 'Playfair Display', 'Abril Fatface', 'Lobster', 'Pacifico', 'Dancing Script', 'Great Vibes', 'Caveat', 'Permanent Marker', 'Bangers', 'Righteous', 'Orbitron', 'Monoton', 'Press Start 2P', 'Rubik Mono One', 'Space Grotesk'];
+const FONT_FAMILIES = ['Montserrat', 'Poppins', 'Inter', 'Oswald', 'Bebas Neue', 'Anton', 'Archivo Black', 'Playfair Display', 'Abril Fatface', 'Lobster', 'Pacifico', 'Dancing Script', 'Great Vibes', 'Caveat', 'Permanent Marker', 'Bangers', 'Righteous', 'Orbitron', 'Monoton', 'Press Start 2P', 'Rubik Mono One', 'Space Grotesk', ...(IS_MAC ? ['Noto Sans', 'DejaVu Serif', 'Liberation Mono'] : [])];
 
 let nameInput, dirtyDot;
 
 async function boot() {
+  document.documentElement.classList.toggle('mac', IS_MAC); // macOS look: see html.mac in app.css
+  if (IS_MAC) { // fonts Ubuntu has installed, bundled for macOS
+    const css = h('link', { rel: 'stylesheet', href: 'css/mac-fonts.css' });
+    await new Promise((r) => { css.onload = css.onerror = r; document.head.append(css); });
+  }
   await Promise.all(FONT_FAMILIES.flatMap((f) => ['400', '700', '800', '900'].map((w) => document.fonts.load(`${w} 40px "${f}"`).catch(() => {}))));
   await document.fonts.load('40px "Noto Color Emoji"').catch(() => {});
   store.project = newProject();
@@ -54,17 +60,23 @@ async function boot() {
   initShortcuts();
   store.on('change', updateTitle);
   store.on('media', updateTitle);
+  if (IS_MAC) { initMacMenus(); initMacMedia(); }
   window.addEventListener('dragover', (e) => e.preventDefault());
   window.addEventListener('drop', (e) => e.preventDefault());
   player.seek(0);
-  if (!(await window.native.gstCheck())) toast('GStreamer encoders were not found, so export will not work. Install gstreamer1.0-plugins-ugly and gstreamer1.0-libav.', 'err', 12000);
+  if (!(await window.native.gstCheck())) toast(/Mac/.test(navigator.platform) ? 'The video encoder that comes with Current was not found, so export will not work. Reinstall Current from its .dmg.' : 'GStreamer encoders were not found, so export will not work. Install gstreamer1.0-plugins-ugly and gstreamer1.0-libav.', 'err', 12000);
   showStart();
 }
 
+// The logo in the top bar, start screen and About box: the Mac version matches the Mac app icon.
+const LOGO = IS_MAC ? 'img/logo-mac.svg' : 'img/logo.svg';
+
 // ---------- top bar ----------
+const menuDefs = []; // [label, () => items] for each menu in the top bar
 function buildTopbar() {
   const bar = document.getElementById('topbar');
   const menu = (label, items) => {
+    menuDefs.push([label, items]);
     const b = h('button.menu-btn', label);
     b.addEventListener('click', () => {
       const r = b.getBoundingClientRect();
@@ -78,7 +90,7 @@ function buildTopbar() {
   nameInput.addEventListener('change', () => { store.project.name = nameInput.value.trim() || 'My Video'; store.dirty = true; updateTitle(); });
   dirtyDot = h('span.dirty.hidden', { title: 'Unsaved changes' });
   bar.append(
-    h('div.brand', h('img', { src: 'img/logo.svg', alt: '' }), 'Current'),
+    h('div.brand', h('img', { src: LOGO, alt: '' }), 'Current'),
     menu('File', () => [
       { label: 'New project', icon: 'plus', kbd: 'Ctrl+N', run: newProjectFlow },
       { label: 'Open project…', icon: 'folder', kbd: 'Ctrl+O', run: () => openProject() },
@@ -131,6 +143,32 @@ function buildTopbar() {
       h('button.btn', { onclick: () => saveProject(false) }, icon('save', 15), 'Save'),
       h('button.btn.primary', { onclick: openExport }, icon('download', 15), 'Export')),
   );
+}
+
+// macOS: the top bar's menus go in the system menu bar instead (self-tests keep the in-page menus they click).
+// The menus change with the selection and the undo history, so they are rebuilt shortly after each change.
+const EDIT_OPS = { Undo: 'undo', Redo: 'redo', Cut: 'cut', Copy: 'copy', Paste: 'paste', 'Select all': 'selectAll' };
+let macRuns = [], macTimer = 0;
+const editingText = () => { const a = document.activeElement; return !!a && (a.isContentEditable || a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !['range', 'checkbox', 'color', 'button'].includes(a.type))); };
+function syncMacMenus() {
+  clearTimeout(macTimer);
+  macTimer = setTimeout(() => {
+    const runs = [];
+    window.native.setAppMenu(menuDefs.map(([label, items]) => ({ label, items: menuData(items(), runs, label === 'Edit' ? EDIT_OPS : {}) })));
+    macRuns = runs;
+  }, 120);
+}
+async function initMacMenus() {
+  const info = await window.native.info();
+  if (info.selftest) return;
+  setNativeMenus(true);
+  document.documentElement.classList.add('native-menus');
+  window.native.onMenuRun((id) => macRuns[id]?.());
+  // Edit menu: in a text box it edits the text; anywhere else it acts on clips.
+  window.native.onMenuEdit((op, id) => { if (editingText()) window.native.editText(op); else macRuns[id]?.(); });
+  for (const ev of ['change', 'selection', 'media', 'brand']) store.on(ev, syncMacMenus);
+  window.addEventListener('focus', syncMacMenus);
+  syncMacMenus();
 }
 
 function updateTitle() {
@@ -236,14 +274,13 @@ async function showStart() {
     h('button.ibtn.sm.rm', { title: 'Remove from list', onclick: async (e) => { e.stopPropagation(); await window.native.recentRemove(r.path); showStart(); } }, icon('x', 14)))) : [h('div.hint', 'Projects you save will show up here.')]);
     startEl = h('div.start',
     h('div.start-side',
-      h('div.start-logo', h('img', { src: 'img/logo.svg', alt: '' }), 'Current'),
-      h('div.start-tag', 'A video editor with screen and voiceover recording, automatic captions, and built-in titles, transitions, effects, filters, stickers, intros, outros and music.'),
-      h('div.hint', 'Aspect ratio'),
-      asp,
+      h('div.start-logo', h('img', { src: LOGO, alt: '' }), 'Current'),
+      IS_MAC ? null : h('div.start-tag', 'A video editor with screen and voiceover recording, automatic captions, and built-in titles, transitions, effects, filters, stickers, intros, outros and music.'),
+      ...(IS_MAC ? [h('div.start-size', h('div.hint', 'Aspect ratio'), asp)] : [h('div.hint', 'Aspect ratio'), asp]), // Mac: centred in the panel
       h('button.btn.primary.big', { onclick: () => { const ok = !store.dirty || !store.project.clips.length; if (!ok && !confirm('Discard the current project?')) return; loadProject(newProject({ aspect }), null); closeStart(); } }, icon('plus', 18), 'New Project'),
       h('button.btn.big', { onclick: () => openProject() }, icon('folder', 18), 'Open Project'),
       store.project.clips.length ? h('button.btn.ghost', { onclick: closeStart }, 'Back to current project') : null,
-      h('button.btn.ghost.start-news', { onclick: () => showWhatsNew() }, icon('news', 16), 'What’s new in 1.6'),
+      IS_MAC ? null : h('button.btn.ghost.start-news', { onclick: () => showWhatsNew() }, icon('news', 16), 'What’s new in 1.6'),
     ),
     h('div.start-main',
       h('h2', 'Recent projects'),
@@ -324,7 +361,7 @@ const SHORTCUTS = [
 ];
 function showShortcuts() {
   modal({ title: 'Keyboard shortcuts', body: h('div.kbd-list', SHORTCUTS.flatMap(([group, rows]) => [h('div.kbd-group', group),
-    ...rows.flatMap(([k, d]) => [h('span', k.split(' / ').map((x, i) => [i ? ' / ' : '', h('kbd', x)])), h('span', d)])])) });
+    ...rows.flatMap(([k, d]) => [h('span', k.split(' / ').map((x, i) => [i ? ' / ' : '', h('kbd', keyLabel(x))])), h('span', d)])])) });
 }
 
 // What's new in 1.6 and 1.5, then every 1.4 feature: where to find each, and a button that opens it where that makes sense.
@@ -358,7 +395,7 @@ function showWhatsNew() {
 }
 async function showAbout() {
   const info = await window.native.info();
-  modal({ title: 'About Current', body: h('div', { style: { width: '420px', lineHeight: 1.6 } }, h('div.start-logo', h('img', { src: 'img/logo.svg' }), 'Current'), h('p', `Version ${info.version}. A template-rich video editor by webhookstudios. Part of the Sedge family of apps.`), h('p.hint', 'Rendering uses WebGL; export uses GStreamer (x264, VP9, AAC, Opus, LAME). Bundled fonts are under the SIL Open Font License.')) });
+  modal({ title: 'About Current', body: h('div', { style: { width: '420px', lineHeight: 1.6 } }, h('div.start-logo', h('img', { src: LOGO }), 'Current'), h('p', `Version ${info.version}. A template-rich video editor by webhookstudios. Part of the Sedge family of apps.`), h('p.hint', `Rendering uses WebGL; export uses ${/Mac/.test(navigator.platform) ? 'ffmpeg' : 'GStreamer'} (x264, VP9, AAC, Opus, LAME). Bundled fonts are under the SIL Open Font License.`)) });
 }
 
 function initShortcuts() {
@@ -377,7 +414,8 @@ function initShortcuts() {
     const p = app.player;
     const fps = store.project.fps || 30;
     if (startEl) return;
-    if (e.altKey && /^[1-9]$/.test(k) && TABS[+k - 1]) { setTab(TABS[+k - 1].id); e.preventDefault(); return; }
+    const digit = /^[1-9]$/.test(k) ? k : IS_MAC ? /^Digit([1-9])$/.exec(e.code)?.[1] : null; // Option+1 types ¡ on a Mac, so use the key's position there
+    if (e.altKey && digit && TABS[+digit - 1]) { setTab(TABS[+digit - 1].id); e.preventDefault(); return; }
     switch (true) {
       case k === ' ': e.preventDefault(); p.toggle(); break;
       case k === 'ArrowLeft': e.preventDefault(); p.seek(store.time - (e.shiftKey ? 1 : 1 / fps)); break;
@@ -391,9 +429,9 @@ function initShortcuts() {
       case ctrl && (k.toLowerCase() === 'y' || (k.toLowerCase() === 'z' && e.shiftKey)): e.preventDefault(); redo(); break;
       case ctrl && k.toLowerCase() === 'b': e.preventDefault(); splitAtPlayhead(); break;
       case ctrl && k.toLowerCase() === 'd': e.preventDefault(); duplicateSelected(); break;
-      case ctrl && k.toLowerCase() === 'c': copySelected(); break;
-      case ctrl && k.toLowerCase() === 'x': cutSelected(); break;
-      case ctrl && k.toLowerCase() === 'v': paste(); break;
+      case ctrl && k.toLowerCase() === 'c': if (IS_MAC) e.preventDefault(); copySelected(); break;
+      case ctrl && k.toLowerCase() === 'x': if (IS_MAC) e.preventDefault(); cutSelected(); break;
+      case ctrl && k.toLowerCase() === 'v': if (IS_MAC) e.preventDefault(); paste(); break;
       case ctrl && k.toLowerCase() === 'a': e.preventDefault(); selectAll(); break;
       case k === 'Delete' || k === 'Backspace': deleteSelected(e.shiftKey); break;
       case k === '+' || k === '=': setZoom(store.zoom * 1.4); break;
