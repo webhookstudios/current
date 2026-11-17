@@ -1,0 +1,1159 @@
+{
+ "version": 1,
+ "instructions": "You are editing a video in Current, a video editor open on the person's computer. Your tools act on the project that is open right now, and the person watches your changes appear on the timeline as you make them.\n\nBasics\n- Times are seconds. Timeline times count from the start of the video. \"in\" and \"out\" on media count from the start of that file.\n- Start with get_project (the timeline) and list_media (the person's files). Ids come from those two; never guess one. After big changes, call get_project again.\n- Changes you make close together undo as one step, so the person can take back everything you did with Undo (Ctrl+Z).\n- You can't export, save, or open, import or delete files. When the video is ready, tell the person to export it with File › Export, and to save the project.\n- When a tool refuses, it says why. Fix the input and try again, or explain the problem to the person.\n\nSeeing the footage\n- view_media gives a contact sheet: several frames of a file, each labelled with its time. You see stills, not motion, so use several sheets, or narrow from/to, to look closer at a long file.\n- analyse_media works out shots (where the camera cuts), dark, soft (blurry or low detail) and shaky stretches, the busiest moments, and quiet and loud parts of the sound. It runs on the computer and is cached, so call it freely.\n- get_media_transcript gives what is said and when, heard on the computer. If it says the speech model isn't downloaded, ask the person before passing download_model (60 MB). If speech recognition isn't installed, work from pictures and sound levels, and say so.\n- view_frame shows the finished video at a time, with every layer, title and effect. Use it to check your work.\n- The frames you look at are sent to Claude. The person's video and sound files stay on their computer.\n\nMaking a first cut from the person's media\n1. Look: list_media, then analyse_media and view_media for every file, and get_media_transcript for files with speech. With many files, start from the contact sheets and check single frames (view_media_frame) only where you are unsure.\n2. Plan: choose the moments and their order against what the person asked for (subject, length, mood, shape). Leave out dark, soft or shaky stretches, repeats and false starts. Open strong and end on a clear, settled shot. Keep within about 10% of the target length.\n3. Build:\n   - Add the chosen moments in order with add_media (in and out), cutting speech at the ends of sentences.\n   - Add an intro and an outro from the matching Sequences section (list_library kind \"sequence\": Travel, News, Gaming, Education, Professional, Intros, Outros), and change their texts with set_text so they fit the video.\n   - Add music that suits the mood (list_library kind \"music\" gives tempo and key). Music dips under voices by itself, as long as the speech clips count as voice (set_clip_type).\n   - Add a few transitions where they help, not on every cut, and captions (make_captions) when people speak and the person wants them.\n   - A starter template (start_from_template, then fill_clip_block) is another way to begin, when one suits the video.\n4. Check: look at a few moments with view_frame (the opening, a title, the end), and fix anything that looks wrong, like text over a face, a cut in the middle of a word or a black frame.\n5. Summarise: tell the person in a few lines what you made and why: the order, what you left out, and the music. Mention that Undo takes it all back, and that they can ask for changes.\n\nStyle\n- Short titles. Keep text clear of faces and important action. Use one or two transition styles per video, not many.\n- Upbeat videos suit shots of 2 to 5 seconds; calm ones can hold longer. Let speech finish before cutting.\n- When the person asks for a change, make that change, and keep the rest as it is.",
+ "tools": [
+  {
+   "name": "get_project",
+   "title": "Get project",
+   "description": "The open project: its shape, length, tracks and every clip on the timeline (ids, times, names, texts, sound, effects, transitions). Call this before editing and again after big changes. Caption clips are summarised unless include_captions is true.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "include_captions": {
+      "type": "boolean",
+      "description": "List every caption clip too."
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Get project",
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "list_media",
+   "title": "List media",
+   "description": "Everything in Project Media that can be put on the timeline: the person's own videos, photos and sound, with length, shape, size, whether it has sound and whether it is already used. Library music already added shows as library: true.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "List media",
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "view_media",
+   "title": "View media",
+   "description": "A contact sheet of one video: several frames from it in one picture, each labelled with its time in the file. This is how to watch footage (you see stills, not motion). Narrow from/to to look closer at part of a long video. Photos come back whole. Up to 16 frames.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "media_id": {
+      "type": "string",
+      "description": "A media id from list_media."
+     },
+     "from": {
+      "type": "number",
+      "description": "Seconds into the file to start (default 0).",
+      "minimum": 0
+     },
+     "to": {
+      "type": "number",
+      "description": "Seconds into the file to end (default: the end).",
+      "minimum": 0
+     },
+     "count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16,
+      "description": "How many frames (default 9)."
+     }
+    },
+    "required": [
+     "media_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "View media",
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "view_media_frame",
+   "title": "View media frame",
+   "description": "One full frame of a video (or a photo) at a time in the file, to check a moment closely.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "media_id": {
+      "type": "string",
+      "description": "A media id from list_media."
+     },
+     "time": {
+      "type": "number",
+      "description": "Seconds into the file.",
+      "minimum": 0
+     }
+    },
+    "required": [
+     "media_id",
+     "time"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "View media frame",
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "view_frame",
+   "title": "View frame",
+   "description": "What the finished video looks like at a time on the timeline, with every layer, title and effect. Use it to check your work.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "time": {
+      "type": "number",
+      "description": "Seconds from the start of the video.",
+      "minimum": 0
+     }
+    },
+    "required": [
+     "time"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "View frame",
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "analyse_media",
+   "title": "Analyse media",
+   "description": "Facts about one file worked out on this computer: shots (where the camera cuts), dark, soft (blurry or low detail) and shaky stretches, motion peaks (busiest moments), and for sound: quiet stretches, loud peaks and how much of it has sound. Ranges are [from, to] in seconds into the file. Slow the first time for long videos; then instant.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "media_id": {
+      "type": "string",
+      "description": "A media id from list_media."
+     }
+    },
+    "required": [
+     "media_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Analyse media",
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "get_media_transcript",
+   "title": "Get media transcript",
+   "description": "What is said in one file and when (seconds into the file), heard on this computer. Phrases by default; words: true adds each word's time, for exact cuts.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "media_id": {
+      "type": "string",
+      "description": "A media id from list_media."
+     },
+     "language": {
+      "type": "string",
+      "description": "A language code such as \"en\", or \"auto\" (default)."
+     },
+     "words": {
+      "type": "boolean",
+      "description": "Also list every word with its times."
+     },
+     "download_model": {
+      "type": "boolean",
+      "description": "Allow downloading the speech model (60 MB) if it is missing. Ask the person first."
+     }
+    },
+    "required": [
+     "media_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Get media transcript",
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "get_transcript",
+   "title": "Get transcript",
+   "description": "What is said in the video as it is now, timed on the timeline: every clip marked as voice, heard on this computer.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "language": {
+      "type": "string",
+      "description": "A language code such as \"en\", or \"auto\" (default)."
+     },
+     "download_model": {
+      "type": "boolean",
+      "description": "Allow downloading the speech model (60 MB) if it is missing. Ask the person first."
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Get transcript",
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "find_pauses",
+   "title": "Find pauses",
+   "description": "The quiet stretches in a clip, as timeline times, without changing anything.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "quieter_than_db": {
+      "type": "number",
+      "description": "How far below the loudest part counts as quiet (default 30).",
+      "minimum": 6,
+      "maximum": 60
+     },
+     "min_seconds": {
+      "type": "number",
+      "description": "Shortest pause to report (default 0.7).",
+      "minimum": 0.2,
+      "maximum": 10
+     }
+    },
+    "required": [
+     "clip_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Find pauses",
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "list_library",
+   "title": "List library",
+   "description": "Search Current's built-in library. Kinds: title (text designs), sequence (ready-made intros, outros and mid-rolls in sections: Intros, Outros, Education, Professional, News, Gaming, Travel), music (with bpm and mode), sound_effect, sticker, background, transition, effect, filter, starter_template (whole layouts with clip blocks to fill). Without a category, the categories are listed too.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "kind": {
+      "type": "string",
+      "enum": [
+       "title",
+       "sequence",
+       "music",
+       "sound_effect",
+       "sticker",
+       "background",
+       "transition",
+       "effect",
+       "filter",
+       "starter_template"
+      ],
+      "description": "What to list."
+     },
+     "category": {
+      "type": "string",
+      "description": "Only this category."
+     },
+     "search": {
+      "type": "string",
+      "description": "Words to look for in names and categories."
+     },
+     "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200,
+      "description": "How many to return (default 40)."
+     }
+    },
+    "required": [
+     "kind"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "List library",
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "add_media",
+   "title": "Add media",
+   "description": "Put a file from Project Media on the timeline. For video and sound, in/out pick the part of the file (seconds into the file). Without `at` it goes after the last clip on its track, so calling it in order builds the video from start to end.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "media_id": {
+      "type": "string",
+      "description": "A media id from list_media."
+     },
+     "in": {
+      "type": "number",
+      "description": "Start, in seconds into the file (default 0).",
+      "minimum": 0
+     },
+     "out": {
+      "type": "number",
+      "description": "End, in seconds into the file (default: the end).",
+      "minimum": 0
+     },
+     "seconds": {
+      "type": "number",
+      "description": "How long a photo shows (default 5).",
+      "minimum": 0.2,
+      "maximum": 600
+     },
+     "at": {
+      "type": "number",
+      "description": "Seconds from the start of the video.",
+      "minimum": 0
+     },
+     "track": {
+      "type": "string",
+      "description": "Where it goes: \"main\" (the main video track), \"overlay\" (a free track above the main one, for things shown on top), \"audio\" (a free audio track), or a track id from get_project."
+     },
+     "make_room": {
+      "type": "boolean",
+      "description": "Make room at `at`: whatever is there is split, and everything from that time on (every track) moves later by this item's length, like inserting a scene. Without it, the spot must be free."
+     }
+    },
+    "required": [
+     "media_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Add media",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "add_library_item",
+   "title": "Add library item",
+   "description": "Add something from the library (ids from list_library). Sequences are placed by `placement`: \"start\" (moves everything later), \"end\", or \"at\" (inserted at `at`, making room, unless make_room is false). Music and sound effects go on an audio track; music ducks under voices by itself. Titles, stickers, effects and filters go on the overlay track by default, so they show on top; `track: \"main\"` puts a title card or background in the main sequence.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "kind": {
+      "type": "string",
+      "enum": [
+       "sequence",
+       "title",
+       "music",
+       "sound_effect",
+       "sticker",
+       "background",
+       "effect",
+       "filter"
+      ],
+      "description": "What it is."
+     },
+     "id": {
+      "type": "string",
+      "description": "The library id."
+     },
+     "at": {
+      "type": "number",
+      "description": "Seconds from the start of the video.",
+      "minimum": 0
+     },
+     "seconds": {
+      "type": "number",
+      "description": "How long it lasts (titles, stickers, backgrounds, effects, filters), or where to stop music early.",
+      "minimum": 0.3,
+      "maximum": 3600
+     },
+     "placement": {
+      "type": "string",
+      "enum": [
+       "start",
+       "end",
+       "at"
+      ],
+      "description": "Sequences only. Default: intros at the start, outros at the end; mid-rolls need \"at\"."
+     },
+     "track": {
+      "type": "string",
+      "description": "Where it goes: \"main\" (the main video track), \"overlay\" (a free track above the main one, for things shown on top), \"audio\" (a free audio track), or a track id from get_project."
+     },
+     "make_room": {
+      "type": "boolean",
+      "description": "Make room at `at`: whatever is there is split, and everything from that time on (every track) moves later by this item's length, like inserting a scene. Without it, the spot must be free."
+     },
+     "texts": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "description": "One line."
+      },
+      "description": "Titles: the text lines, in order.",
+      "minItems": 1,
+      "maxItems": 12
+     },
+     "volume": {
+      "type": "number",
+      "description": "Music and sound effects: 0 to 2 (1 is as made).",
+      "minimum": 0,
+      "maximum": 2
+     }
+    },
+    "required": [
+     "kind",
+     "id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Add library item",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "start_from_template",
+   "title": "Start from template",
+   "description": "Lay out a starter template (list_library kind \"starter_template\"): an intro, clip blocks to fill with fill_clip_block, overlays, an outro and music. Only on an empty timeline.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "template_id": {
+      "type": "string",
+      "description": "The starter template id."
+     }
+    },
+    "required": [
+     "template_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Start from template",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "fill_clip_block",
+   "title": "Fill clip block",
+   "description": "Replace a clip block (clip_block: true in get_project) with a file from Project Media, keeping the block's place, length and transitions. For video, `in` picks where in the file to start.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "media_id": {
+      "type": "string",
+      "description": "A media id from list_media."
+     },
+     "in": {
+      "type": "number",
+      "description": "Start, in seconds into the file (default 0).",
+      "minimum": 0
+     }
+    },
+    "required": [
+     "clip_id",
+     "media_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Fill clip block",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "split",
+   "title": "Split",
+   "description": "Cut a clip in two at a timeline time. Returns the id of the new right-hand part.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "time": {
+      "type": "number",
+      "description": "Seconds from the start of the video.",
+      "minimum": 0
+     }
+    },
+    "required": [
+     "clip_id",
+     "time"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Split",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "trim",
+   "title": "Trim",
+   "description": "Change where a clip starts or ends on the timeline. For video and sound, the picture stays in sync: trimming the start skips into the file. The new range must be free on its track.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "start": {
+      "type": "number",
+      "description": "New start on the timeline.",
+      "minimum": 0
+     },
+     "end": {
+      "type": "number",
+      "description": "New end on the timeline.",
+      "minimum": 0
+     }
+    },
+    "required": [
+     "clip_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Trim",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "move",
+   "title": "Move",
+   "description": "Move a clip to another time, another track, or both. The new spot must be free.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "start": {
+      "type": "number",
+      "description": "New start on the timeline.",
+      "minimum": 0
+     },
+     "track": {
+      "type": "string",
+      "description": "Where it goes: \"main\" (the main video track), \"overlay\" (a free track above the main one, for things shown on top), \"audio\" (a free audio track), or a track id from get_project."
+     }
+    },
+    "required": [
+     "clip_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Move",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "delete",
+   "title": "Delete",
+   "description": "Remove clips from the timeline (the files stay in Project Media). close_gap moves later clips on the same track up to fill the space.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_ids": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "description": "A clip id."
+      },
+      "description": "The clips to remove.",
+      "minItems": 1,
+      "maxItems": 500
+     },
+     "close_gap": {
+      "type": "boolean",
+      "description": "Close the gaps left behind."
+     }
+    },
+    "required": [
+     "clip_ids"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Delete",
+    "readOnlyHint": false,
+    "destructiveHint": true,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "set_speed",
+   "title": "Set speed",
+   "description": "Play a video or sound clip faster or slower (1 is normal). Later clips on the same track move to keep up.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "speed": {
+      "type": "number",
+      "description": "0.25 to 4.",
+      "minimum": 0.25,
+      "maximum": 4
+     }
+    },
+    "required": [
+     "clip_id",
+     "speed"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Set speed",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "freeze_frame",
+   "title": "Freeze frame",
+   "description": "Hold the picture of a video clip still at a timeline time; everything after it on that track moves later.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "time": {
+      "type": "number",
+      "description": "Seconds from the start of the video.",
+      "minimum": 0
+     },
+     "seconds": {
+      "type": "number",
+      "description": "How long to hold (default 2).",
+      "minimum": 0.2,
+      "maximum": 30
+     }
+    },
+    "required": [
+     "clip_id",
+     "time"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Freeze frame",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "set_text",
+   "title": "Set text",
+   "description": "Change the words of a title, caption or sequence piece. texts replaces the lines in order; lines left out stay as they are.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "texts": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "description": "One line."
+      },
+      "description": "The new lines.",
+      "minItems": 1,
+      "maxItems": 12
+     }
+    },
+    "required": [
+     "clip_id",
+     "texts"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Set text",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "set_style",
+   "title": "Set style",
+   "description": "Change a title's or sticker's colours (hex like \"#ff4d6d\", in the template's order) or a title's font. Fonts: Montserrat, Poppins, Inter, Oswald, Bebas Neue, Anton, Archivo Black, Playfair Display, Abril Fatface, Lobster, Pacifico, Dancing Script, Great Vibes, Caveat, Permanent Marker, Bangers, Righteous, Orbitron, Monoton, Press Start 2P, Rubik Mono One, Space Grotesk, Noto Sans, DejaVu Serif, Liberation Mono; null goes back to the template's font.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "colors": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "description": "A colour like \"#ffffff\".",
+       "pattern": "^#[0-9a-fA-F]{6}$"
+      },
+      "description": "The colours in order; leave out ones to keep.",
+      "minItems": 1,
+      "maxItems": 8
+     },
+     "font": {
+      "type": [
+       "string",
+       "null"
+      ],
+      "description": "A font name from the list, or null."
+     }
+    },
+    "required": [
+     "clip_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Set style",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "apply_effect",
+   "title": "Apply effect",
+   "description": "Add an effect to a clip (or change its amount, or remove it). Use list_library kind \"effect\" for ids.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "effect_id": {
+      "type": "string",
+      "description": "The effect id."
+     },
+     "amount": {
+      "type": "number",
+      "description": "0 to 1 (default: the effect's own).",
+      "minimum": 0,
+      "maximum": 1
+     },
+     "remove": {
+      "type": "boolean",
+      "description": "Take the effect off instead."
+     }
+    },
+    "required": [
+     "clip_id",
+     "effect_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Apply effect",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "apply_filter",
+   "title": "Apply filter",
+   "description": "Give a clip a colour filter (list_library kind \"filter\"), or null to remove it.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "filter_id": {
+      "type": [
+       "string",
+       "null"
+      ],
+      "description": "The filter id, or null."
+     },
+     "amount": {
+      "type": "number",
+      "description": "0 to 1 (default 1).",
+      "minimum": 0,
+      "maximum": 1
+     }
+    },
+    "required": [
+     "clip_id",
+     "filter_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Apply filter",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "set_transition",
+   "title": "Set transition",
+   "description": "Set how a clip comes in (side \"in\", from the clip before it) or goes out (\"out\"). null removes it. Use list_library kind \"transition\" for ids.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "side": {
+      "type": "string",
+      "enum": [
+       "in",
+       "out"
+      ],
+      "description": "Which end."
+     },
+     "transition_id": {
+      "type": [
+       "string",
+       "null"
+      ],
+      "description": "The transition id, or null."
+     },
+     "seconds": {
+      "type": "number",
+      "description": "How long (default 1).",
+      "minimum": 0.1,
+      "maximum": 5
+     }
+    },
+    "required": [
+     "clip_id",
+     "side",
+     "transition_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Set transition",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "apply_brand_kit",
+   "title": "Apply brand kit",
+   "description": "Give titles and stickers the colours and font of the brand kit the person has turned on. Without clip_ids, every title and sticker.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_ids": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "description": "A clip id."
+      },
+      "description": "Only these clips.",
+      "minItems": 1,
+      "maxItems": 500
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Apply brand kit",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "set_volume",
+   "title": "Set volume",
+   "description": "Loudness and fades of a video or sound clip.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "volume": {
+      "type": "number",
+      "description": "0 to 2 (1 is as recorded).",
+      "minimum": 0,
+      "maximum": 2
+     },
+     "fade_in": {
+      "type": "number",
+      "description": "Seconds of fade in.",
+      "minimum": 0,
+      "maximum": 30
+     },
+     "fade_out": {
+      "type": "number",
+      "description": "Seconds of fade out.",
+      "minimum": 0,
+      "maximum": 30
+     },
+     "muted": {
+      "type": "boolean",
+      "description": "Silence the clip."
+     }
+    },
+    "required": [
+     "clip_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Set volume",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "set_clip_type",
+   "title": "Set clip type",
+   "description": "Say what a sound is: voice (captions and transcripts listen to it, and music dips under it), music (dips under voices when duck is on) or effect.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "sound": {
+      "type": "string",
+      "enum": [
+       "voice",
+       "music",
+       "effect"
+      ],
+      "description": "What the sound is."
+     },
+     "duck": {
+      "type": "boolean",
+      "description": "Music only: dip under voices (default on)."
+     }
+    },
+    "required": [
+     "clip_id",
+     "sound"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Set clip type",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "remove_pauses",
+   "title": "Remove pauses",
+   "description": "Cut the quiet stretches out of a clip and close the gaps (later clips on its track move up). Speech keeps a little silence either side.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "quieter_than_db": {
+      "type": "number",
+      "description": "How far below the loudest part counts as quiet (default 30).",
+      "minimum": 6,
+      "maximum": 60
+     },
+     "min_seconds": {
+      "type": "number",
+      "description": "Shortest pause to cut (default 0.7).",
+      "minimum": 0.2,
+      "maximum": 10
+     }
+    },
+    "required": [
+     "clip_id"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Remove pauses",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "make_captions",
+   "title": "Make captions",
+   "description": "Caption everything said in the video (clips marked as voice), heard on this computer. Replaces existing captions. Styles are the Subtitles titles (list_library kind \"title\", category \"Subtitles\").",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "style": {
+      "type": "string",
+      "description": "A Subtitles title id (default \"sub-box\")."
+     },
+     "words_per_caption": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 14,
+      "description": "Most words on screen at once (default 7)."
+     },
+     "show": {
+      "type": "string",
+      "enum": [
+       "burn",
+       "file",
+       "both"
+      ],
+      "description": "burn: always on screen; file: an .srt file next to the export; both."
+     },
+     "language": {
+      "type": "string",
+      "description": "A language code such as \"en\", or \"auto\" (default)."
+     },
+     "download_model": {
+      "type": "boolean",
+      "description": "Allow downloading the speech model (60 MB) if it is missing. Ask the person first."
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Make captions",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "set_timer_length",
+   "title": "Set timer length",
+   "description": "Set how long an Activity Timer countdown runs; the clip, its background and everything after it adjust.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "clip_id": {
+      "type": "string",
+      "description": "A clip id from get_project."
+     },
+     "seconds": {
+      "type": "number",
+      "description": "5 seconds to 3 hours.",
+      "minimum": 5,
+      "maximum": 10800
+     }
+    },
+    "required": [
+     "clip_id",
+     "seconds"
+    ],
+    "additionalProperties": false
+   },
+   "annotations": {
+    "title": "Set timer length",
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  }
+ ],
+ "prompts": [
+  {
+   "name": "first_cut",
+   "title": "First cut",
+   "description": "Build a first cut of a video from the media in the project open in Current.",
+   "arguments": [
+    {
+     "name": "about",
+     "description": "What the video is, in a line (for example: a 60-second travel recap from our Lisbon trip).",
+     "required": true
+    },
+    {
+     "name": "length",
+     "description": "Target length, like \"60 seconds\" (optional).",
+     "required": false
+    },
+    {
+     "name": "mood",
+     "description": "Calm, upbeat, dramatic, warm… (optional).",
+     "required": false
+    },
+    {
+     "name": "include",
+     "description": "Any of: intro, outro, music, captions (optional; default: all four).",
+     "required": false
+    }
+   ],
+   "template": "Make a first cut in Current from the media in the open project.\n\nWhat it is: {{about}}\nTarget length: {{length|what the footage supports}}\nMood: {{mood|whatever suits the footage}}\nInclude: {{include|an intro, an outro, music, and captions if people speak}}\n\nFollow the first-cut steps in your instructions: look at every file, plan, build, check with view_frame, then summarise what you made."
+  }
+ ]
+}

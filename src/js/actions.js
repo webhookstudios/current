@@ -359,7 +359,9 @@ export { checkpoint, changed, AUDIBLE, prevAdjacent };
 
 // ---------- starter templates ----------
 // Lays out intro, placeholder scenes (named after what to drop there), overlays, outro and music.
-export async function buildFromTemplate(tpl) {
+// A new project starts its history here; keepHistory leaves it (the assistant builds templates as
+// one undoable step).
+export async function buildFromTemplate(tpl, { keepHistory = false } = {}) {
   const main = mainTrack();
   let t = 0;
   const intro = packById(tpl.intro), outro = packById(tpl.outro);
@@ -399,8 +401,10 @@ export async function buildFromTemplate(tpl) {
       addClip(m, { overwrite: false });
     });
   }
-  store.undoStack.length = 0;
-  store.redoStack.length = 0;
+  if (!keepHistory) {
+    store.undoStack.length = 0;
+    store.redoStack.length = 0;
+  }
   select([]);
   app.player?.seek(0);
 }

@@ -86,6 +86,29 @@ function createWindow() {
     ipcMain.handle('selftest:capture', async (_e, file) => { const img = await win.webContents.capturePage(); fs.writeFileSync(file, img.toPNG()); return true; });
     ipcMain.handle('selftest:mouse', (_e, x, y) => { win.webContents.sendInputEvent({ type: 'mouseMove', x: Math.round(x), y: Math.round(y) }); return true; });
     ipcMain.once('selftest:done', (_e, code) => { setTimeout(() => app.exit(code || 0), 200); });
+    ipcMain.handle('selftest:writeText', async (_e, file, text) => { fs.writeFileSync(path.resolve(file), text); return true; });
+    // Run the connector bridge the way Claude's apps do: a child process speaking MCP on stdin/stdout.
+    // Sends the messages, waits for an answer to every one that has an id, and returns the answers.
+    ipcMain.handle('selftest:bridge', async (_e, messages, env = {}) => new Promise((resolve) => {
+      const p = spawn(process.execPath, [BRIDGE], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', ...env }, stdio: ['pipe', 'pipe', 'pipe'] });
+      const want = new Set(messages.filter((m) => m.id !== undefined).map((m) => m.id));
+      const answers = [], notes = [];
+      let buf = '', err = '';
+      const finish = () => { clearTimeout(limit); try { p.stdin.end(); p.kill(); } catch { /* gone */ } resolve({ answers, notes, stderr: err }); };
+      const limit = setTimeout(finish, 120000);
+      p.stdout.setEncoding('utf8');
+      p.stdout.on('data', (d) => {
+        buf += d;
+        for (let i; (i = buf.indexOf('\n')) >= 0;) {
+          const m = JSON.parse(buf.slice(0, i));
+          buf = buf.slice(i + 1);
+          if (m.id !== undefined && m.id !== null) { answers.push(m); want.delete(m.id); } else notes.push(m);
+          if (!want.size) finish();
+        }
+      });
+      p.stderr.on('data', (d) => { err += d; });
+      for (const m of messages) p.stdin.write(JSON.stringify(m) + '\n');
+    }));
     win.webContents.once('did-finish-load', () => setTimeout(() => win.webContents.executeJavaScript(`import(${JSON.stringify('file://' + path.resolve(selftest))}).then(() => 0, e => { console.error('SELFTEST LOAD', e.stack); window.native.selftestDone(1); })`), 1500));
   }
 }
@@ -99,6 +122,8 @@ app.whenReady().then(() => {
       .catch(() => callback({}));
   });
   createWindow();
+  win.webContents.on('did-start-loading', () => { assist.ready = false; });
+  if (assistSettings().connector) startConnector();
 });
 app.on('window-all-closed', () => app.quit());
 
@@ -425,3 +450,153 @@ ipcMain.handle('export:cancel', async () => { cancelExport(); return true; });
 ipcMain.handle('gst:check', async () => new Promise((resolve) => {
   execFile('gst-inspect-1.0', ['x264enc'], (err) => resolve(!err));
 }));
+
+// ---------- assistant connector ----------
+// Claude's apps start mcp/bridge.js, which reaches Current over a local socket in the user-data folder
+// (readable and writable by this user only). Each line in is { id, method: 'catalog' | 'call' | 'hello',
+// name, input }; the editor page answers. Off until the person switches it on in Tools › Assistant.
+const net = require('net');
+const BRIDGE = path.join(__dirname, 'mcp', 'bridge.js');
+// Tests point CURRENT_ASSISTANT_SOCKET at their own folder, which then also holds the setting and the key.
+const ASSIST_DIR = () => (process.env.CURRENT_ASSISTANT_SOCKET ? path.dirname(SOCKET()) : USER());
+const ASSIST_FILE = () => (process.env.CURRENT_ASSISTANT_SOCKET ? path.join(ASSIST_DIR(), 'assistant-settings.json') : path.join(USER(), 'assistant.json'));
+const SOCKET = () => (process.env.CURRENT_ASSISTANT_SOCKET ? path.resolve(process.env.CURRENT_ASSISTANT_SOCKET) : path.join(USER(), 'assistant.sock'));
+const assist = { server: null, pending: new Map(), seq: 0, ready: false, lastUsed: 0 };
+const failMsg = (text) => ({ ok: false, content: [{ type: 'text', text }] });
+
+function assistSettings() {
+  try { return { connector: false, ...JSON.parse(fs.readFileSync(ASSIST_FILE(), 'utf8')) }; } catch { return { connector: false }; }
+}
+
+// extra.panel: the call comes from the panel inside Current (its own undo step), not the connector.
+function askPage(method, name, input, extra = {}) {
+  return new Promise((resolve) => {
+    if (!win || win.isDestroyed() || !assist.ready) return resolve(failMsg('Current is still starting. Try again in a moment.'));
+    const id = ++assist.seq;
+    const limit = setTimeout(() => { assist.pending.delete(id); resolve(failMsg('Current took too long to answer.')); }, 15 * 60 * 1000);
+    assist.pending.set(id, (out) => { clearTimeout(limit); resolve(out); });
+    win.webContents.send('assistant:call', { id, method, name, input, ...extra });
+  });
+}
+ipcMain.on('assistant:result', (_e, id, out) => { const done = assist.pending.get(id); assist.pending.delete(id); done?.(out); });
+ipcMain.on('assistant:ready', () => { assist.ready = true; });
+
+function startConnector() {
+  if (assist.server) return;
+  const sock = SOCKET();
+  try { fs.unlinkSync(sock); } catch { /* none left over */ }
+  const srv = net.createServer((c) => {
+    c.setEncoding('utf8');
+    let buf = '';
+    c.on('data', (d) => {
+      buf += d;
+      for (let i; (i = buf.indexOf('\n')) >= 0;) {
+        const line = buf.slice(0, i);
+        buf = buf.slice(i + 1);
+        let msg;
+        try { msg = JSON.parse(line); } catch { continue; }
+        if (msg.method === 'call') assist.lastUsed = Date.now();
+        (async () => {
+          const result = msg.method === 'hello' ? { app: 'Current', version: app.getVersion() }
+            : msg.method === 'catalog' || msg.method === 'call' ? await askPage(msg.method, msg.name, msg.input)
+              : failMsg(`Unknown request ${msg.method}.`);
+          if (!c.destroyed) c.write(JSON.stringify({ id: msg.id, result }) + '\n');
+        })();
+      }
+    });
+    c.on('error', () => { /* the bridge went away */ });
+  });
+  srv.on('error', (e) => console.error('[assistant]', e.message));
+  srv.listen(sock, () => { try { fs.chmodSync(sock, 0o600); } catch { /* best effort */ } });
+  assist.server = srv;
+}
+function stopConnector() {
+  if (!assist.server) return;
+  assist.server.close();
+  assist.server = null;
+  try { fs.unlinkSync(SOCKET()); } catch { /* gone */ }
+}
+app.on('will-quit', stopConnector);
+
+// How other apps start the bridge with Current's own runtime, so they need no Node of their own.
+const bridgeConfig = () => ({ command: process.execPath, args: [BRIDGE], env: { ELECTRON_RUN_AS_NODE: '1' } });
+const shq = (s) => (/^[\w@%+=:,./-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`);
+
+ipcMain.handle('assistant:get', async () => ({
+  ...assistSettings(),
+  running: !!assist.server,
+  lastUsed: assist.lastUsed,
+  claudeCode: `claude mcp add current --scope user -e ELECTRON_RUN_AS_NODE=1 -- ${shq(process.execPath)} ${shq(BRIDGE)}`,
+  mcpConfig: JSON.stringify({ mcpServers: { current: bridgeConfig() } }, null, 2),
+}));
+ipcMain.handle('assistant:set', async (_e, change) => {
+  const s = { ...assistSettings(), ...change };
+  fs.writeFileSync(ASSIST_FILE(), JSON.stringify(s));
+  if (s.connector) startConnector(); else stopConnector();
+  return s;
+});
+
+// A bundle for Claude's desktop app (a zip with a manifest; the app runs the bridge with its own Node).
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = (buf) => { let c = 0xffffffff; for (const b of buf) c = CRC[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+function zipStored(files) {
+  const parts = [], central = [];
+  let offset = 0;
+  for (const [name, content] of files) {
+    const data = Buffer.isBuffer(content) ? content : Buffer.from(content);
+    const nm = Buffer.from(name), crc = crc32(data);
+    const loc = Buffer.alloc(30);
+    loc.writeUInt32LE(0x04034b50, 0); loc.writeUInt16LE(20, 4); loc.writeUInt16LE(0x0800, 6); loc.writeUInt16LE(0, 8);
+    loc.writeUInt16LE(0, 10); loc.writeUInt16LE(0x21, 12); loc.writeUInt32LE(crc, 14); loc.writeUInt32LE(data.length, 18);
+    loc.writeUInt32LE(data.length, 22); loc.writeUInt16LE(nm.length, 26); loc.writeUInt16LE(0, 28);
+    const cen = Buffer.alloc(46);
+    cen.writeUInt32LE(0x02014b50, 0); cen.writeUInt16LE(0x0314, 4); cen.writeUInt16LE(20, 6); cen.writeUInt16LE(0x0800, 8); cen.writeUInt16LE(0, 10);
+    cen.writeUInt16LE(0, 12); cen.writeUInt16LE(0x21, 14); cen.writeUInt32LE(crc, 16); cen.writeUInt32LE(data.length, 20); cen.writeUInt32LE(data.length, 24);
+    cen.writeUInt16LE(nm.length, 28); cen.writeUInt32LE((0o100644 << 16) >>> 0, 38); cen.writeUInt32LE(offset, 42);
+    parts.push(loc, nm, data);
+    central.push(cen, nm);
+    offset += 30 + nm.length + data.length;
+  }
+  const cd = Buffer.concat(central), end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...parts, cd, end]);
+}
+// The panel inside Current: the person's own API key and the Claude loop (assistant.js).
+require('./assistant.js')({ getWin: () => win, askPage, dir: ASSIST_DIR, selftest: process.argv.some((a) => a.startsWith('--selftest')) });
+
+ipcMain.handle('assistant:saveBundle', async (_e, catalog) => {
+  let out = process.env.CURRENT_BUNDLE_PATH && path.resolve(process.env.CURRENT_BUNDLE_PATH);
+  if (!out) {
+    const r = await dialog.showSaveDialog(win, {
+      title: 'Save the connector for Claude’s desktop app', defaultPath: path.join(app.getPath('downloads'), 'Current.mcpb'),
+      filters: [{ name: 'Claude desktop extension', extensions: ['mcpb'] }],
+    });
+    if (r.canceled) return null;
+    out = r.filePath.endsWith('.mcpb') ? r.filePath : `${r.filePath}.mcpb`;
+  }
+  const manifest = {
+    manifest_version: '0.3',
+    name: 'current',
+    display_name: 'Current',
+    version: app.getVersion(),
+    description: 'Lets Claude edit the project open in Current: build a first cut from your media, trim, add titles, music and captions.',
+    long_description: 'Works while Current is open and **Let Claude edit in Current** is on (Tools › Assistant). Claude sees the project outline (clip and file names, times, texts and captions), transcripts of what is said, and the still frames it asks to see; these go to Anthropic under your Claude plan’s terms and its privacy policy, and webhookstudios never sees them. Your video and sound files stay on your computer. Everything Claude changes can be undone in Current. Claude is a trademark of Anthropic, PBC; Current is an independent app, not made or endorsed by Anthropic.',
+    author: { name: 'webhookstudios', url: 'https://github.com/webhookstudios' },
+    homepage: 'https://github.com/webhookstudios/current',
+    repository: { type: 'git', url: 'https://github.com/webhookstudios/current.git' },
+    license: 'GPL-2.0-or-later',
+    icon: 'icon.png',
+    server: { type: 'node', entry_point: 'server/bridge.js', mcp_config: { command: 'node', args: ['${__dirname}/server/bridge.js'], env: {} } },
+    tools: catalog.tools.map((t) => ({ name: t.name, description: t.description })),
+    prompts: catalog.prompts.map((p) => ({ name: p.name, description: p.description, arguments: p.arguments.map((a) => a.name), text: p.template.replace(/\{\{(\w+)(?:\|[^}]*)?\}\}/g, '${arguments.$1}') })),
+    compatibility: { platforms: ['darwin', 'win32', 'linux'], runtimes: { node: '>=18.0.0' } },
+  };
+  fs.writeFileSync(out, zipStored([
+    ['manifest.json', JSON.stringify(manifest, null, 2)],
+    ['server/bridge.js', fs.readFileSync(BRIDGE)],
+    ['server/catalog.json', JSON.stringify(catalog)],
+    ['icon.png', fs.readFileSync(path.join(__dirname, 'data', 'io.github.webhookstudios.Current.png'))],
+  ]));
+  return out;
+});

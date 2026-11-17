@@ -473,3 +473,65 @@ kbd { background: var(--bg4); border: 1px solid var(--line2); border-bottom-widt
 .news-row .where { color: var(--fg3); font-size: 12px; line-height: 1.45; }
 .kbd-group { grid-column: 1 / -1; margin: 10px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg3); }
 .kbd-group:first-child { margin-top: 0; }
+
+/* ---------- assistant ---------- */
+.assist-pill { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; background: rgba(79, 179, 165, 0.16); color: var(--accent); font-size: 12px; font-weight: 600; }
+.assist-pill .ic { animation: assist-pulse 1.4s ease-in-out infinite; }
+@keyframes assist-pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .assist-pill .ic { animation: none; } }
+.asst { display: flex; flex-direction: column; gap: 12px; }
+.asst-lead { margin: 0; line-height: 1.55; }
+.asst-by { color: var(--fg3); font-size: 12px; margin-top: -6px; }
+.asst-step { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 10px; background: var(--bg1); border: 1px solid var(--line); }
+.asst-step .cap-cmd code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-size: 11.5px; }
+.asst-more summary { cursor: pointer; color: var(--fg2); }
+.asst-more { display: flex; flex-direction: column; gap: 6px; }
+.asst-json { margin: 6px 0; padding: 8px 10px; border-radius: 7px; background: #0006; font-size: 11.5px; overflow-x: auto; user-select: text; }
+.asst-privacy { display: flex; gap: 8px; align-items: flex-start; color: var(--fg2); font-size: 12px; line-height: 1.5; }
+.asst-privacy .ic { margin-top: 2px; flex: none; }
+
+/* ---------- the Assistant panel ---------- */
+.ap { position: fixed; right: 0; bottom: 0; width: 400px; max-width: 100vw; z-index: 300; display: flex; flex-direction: column; background: var(--bg2); border-left: 1px solid var(--line2); box-shadow: -12px 0 40px rgba(0, 0, 0, 0.35); }
+.ap-head { display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 14px; border-bottom: 1px solid var(--line); color: var(--accent); }
+.ap-head b { color: var(--fg); font-size: 14px; }
+.ap-head .sp { flex: 1; }
+.ap-by { color: var(--fg3); font-size: 11.5px; }
+.ap-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ap-log { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; user-select: text; }
+.ap-card { margin: 14px; padding: 14px; border-radius: 10px; background: var(--bg1); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; line-height: 1.5; }
+.ap-card p { margin: 0; }
+.ap-card a, .ap-empty a { color: var(--accent); }
+.ap-keyrow { display: flex; gap: 8px; }
+.ap-bad { color: var(--danger) !important; }
+.ap-empty { color: var(--fg2); line-height: 1.5; display: flex; flex-direction: column; gap: 10px; }
+.ap-empty p { margin: 0; }
+.ap-empty .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ap-msg { line-height: 1.5; overflow-wrap: anywhere; }
+.ap-you { align-self: flex-end; max-width: 85%; padding: 8px 12px; border-radius: 12px 12px 4px 12px; background: rgba(79, 179, 165, 0.16); white-space: pre-wrap; }
+.ap-claude p { margin: 0 0 8px; }
+.ap-claude p:last-child { margin-bottom: 0; }
+.ap-claude ul, .ap-claude ol { margin: 0 0 8px; padding-left: 20px; }
+.ap-claude code { background: #0006; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+.ap-step { display: flex; align-items: flex-start; gap: 8px; color: var(--fg2); font-size: 12px; line-height: 1.4; }
+.ap-step .ic { margin-top: 1px; color: var(--accent); flex: none; }
+.ap-step.bad, .ap-step.bad .ic { color: var(--warn); }
+.ap-dot { width: 8px; height: 8px; margin: 4px 3px 0 2px; border-radius: 50%; background: var(--accent); flex: none; animation: assist-pulse 1.2s ease-in-out infinite; }
+.ap-thinking { display: flex; align-items: center; gap: 8px; color: var(--fg3); font-size: 12px; }
+.ap-thinking .ap-dot { margin-top: 0; }
+.ap-note { display: flex; gap: 8px; align-items: flex-start; color: var(--fg2); font-size: 12px; }
+.ap-note.err { color: var(--warn); }
+.ap-note .ic { flex: none; margin-top: 1px; }
+.ap-foot { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding-top: 6px; border-top: 1px solid var(--line); color: var(--fg3); font-size: 11.5px; }
+.ap-compose { border-top: 1px solid var(--line); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.ap-first { align-self: flex-start; }
+.ap-inrow { display: flex; gap: 6px; align-items: flex-end; }
+.ap-input { flex: 1; min-height: 44px; max-height: 160px; resize: vertical; }
+.ap-go { width: 36px; height: 36px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); }
+.ap-go:hover { background: #6fcabd; color: var(--accent-ink); }
+.ap-go.stop { background: var(--bg4); color: var(--fg); }
+.ap-form { display: flex; flex-direction: column; gap: 12px; }
+.ap-form .row > label { width: 90px; }
+@media (prefers-reduced-motion: reduce) { .ap-dot { animation: none; } }
+.asst-privacy p { margin: 0 0 6px; }
+.asst-privacy p:last-child { margin-bottom: 0; }
+.asst-privacy a, .ap-card a { color: var(--accent); }

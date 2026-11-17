@@ -2,7 +2,8 @@
 # Builds dist/current_<version>_amd64.deb. Needs dpkg-deb and `npm install` run once (for Electron).
 #
 #   /usr/lib/current/            Electron runtime, binary renamed to `current`
-#   /usr/lib/current/resources/app/   the editor (main.js, preload.js, src/)
+#   /usr/lib/current/resources/app/   the editor (main.js, preload.js, assistant.js, src/, node_modules/ with
+#                                     Anthropic's SDK, and mcp/: the connector for Claude's apps)
 #   /usr/bin/current             launcher symlink
 #   /usr/share/applications, icons, mime   apps-menu entry, icon, .splice file type
 #   /etc/apparmor.d/current      user-namespace permission for the Chromium sandbox
@@ -10,7 +11,8 @@ set -e
 
 APP_ID=io.github.webhookstudios.Current
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-VERSION="$(node -p "require('$ROOT/package.json').version")"
+# CURRENT_DEB_VERSION overrides the version for a test build (for example 1.7.0~test1).
+VERSION="${CURRENT_DEB_VERSION:-$(node -p "require('$ROOT/package.json').version")}"
 ELECTRON="$ROOT/node_modules/electron/dist"
 [ -x "$ELECTRON/electron" ] || { echo "Run 'npm install' first (Electron is missing)." >&2; exit 1; }
 STAGE="$(mktemp -d)"
@@ -27,8 +29,15 @@ rm -f "$LIB/resources/default_app.asar"
 mv "$LIB/electron" "$LIB/current"
 chmod 4755 "$LIB/chrome-sandbox"
 
-cp "$ROOT/package.json" "$ROOT/main.js" "$ROOT/preload.js" "$APP/"
+cp "$ROOT/package.json" "$ROOT/main.js" "$ROOT/preload.js" "$ROOT/assistant.js" "$APP/"
 cp -r "$ROOT/src" "$APP/src"
+cp -r "$ROOT/mcp" "$APP/mcp"
+# Runtime packages: Anthropic's SDK for the Assistant panel and what it needs (not Electron, a dev tool here).
+(cd "$ROOT" && npm ls --omit=dev --parseable --all 2>/dev/null) | tail -n +2 | while read -r dir; do
+    rel="${dir#"$ROOT"/}"
+    install -d "$APP/$(dirname "$rel")"
+    cp -a "$dir" "$APP/$rel"
+done
 install -d "$APP/data"
 cp "$ROOT/data/$APP_ID.png" "$APP/data/"
 node -e "const f='$APP/package.json';const p=require(f);delete p.devDependencies;delete p.scripts;require('fs').writeFileSync(f,JSON.stringify(p,null,2))"
@@ -64,6 +73,31 @@ License: OFL-1.1
 Files: usr/lib/current/*
 License: MIT and others
  Electron and Chromium; see usr/lib/current/LICENSE and LICENSES.chromium.html.
+
+Files: usr/lib/current/resources/app/node_modules/*
+License: Apache-2.0 and MIT and Unlicense
+ Anthropic's SDK (Apache-2.0) and the packages it uses (Apache-2.0, MIT, Unlicense).
+ Each package's license is in its own folder; on Debian systems the Apache License 2.0
+ is in /usr/share/common-licenses/Apache-2.0.
+
+Files: usr/lib/current/resources/app/node_modules/standardwebhooks/*
+Copyright: Standard Webhooks authors (https://github.com/standard-webhooks/standard-webhooks)
+License: MIT
+ Permission is hereby granted, free of charge, to any person obtaining a copy of this
+ software and associated documentation files (the "Software"), to deal in the Software
+ without restriction, including without limitation the rights to use, copy, modify, merge,
+ publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+ to whom the Software is furnished to do so, subject to the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included in all copies or
+ substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+ FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ DEALINGS IN THE SOFTWARE.
 EOT
 chmod 644 "$STAGE/usr/share/doc/current/copyright"
 

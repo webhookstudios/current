@@ -54,6 +54,24 @@ New projects start blank. The start screen also offers the 12 starter templates;
 
 Save your colours, a heading font, a logo, your company name and initials as a brand kit. Keep as many kits as you like, pick the one in use from the Brand menu or the button in the top bar, or switch branding off entirely. While a kit is on, the titles, stickers and sequences you add take its colours and font (whites, blacks and greys stay, so text stays readable), the library previews show your look, and the Monogram intro and lower third use your initials. **Apply brand** recolours clips you already added, and **Add logo at playhead** puts your logo in the corner.
 
+## Editing with Claude
+
+Ask Claude to edit the project you have open. For example: "make a 60-second travel recap from my clips, upbeat, with captions", or "cut the long pauses and add the Boarding Pass intro". Claude builds or changes the video while you watch, and the top bar shows when it is working. There are two ways in:
+
+- **The Assistant panel in Current** (the speech-bubble button in the top bar). Paste your own Claude API key once; requests are billed to that Claude developer account. A small edit usually costs a few cents, and a first cut about a dollar. The panel lists each step Claude takes, then what it changed and what it used, with **Undo all of this**. The key is kept encrypted with your system's keyring.
+- **Claude's own apps, with your Claude plan.** Turn on **Tools › Assistant › Let Claude edit in Current**, then ask in Claude's desktop app or Claude Code.
+
+Either way:
+
+- **A first cut from your own media.** Add your videos, photos and sound to Project Media. Claude looks through them, picks and orders the best moments, trims them, and adds an intro and outro, titles, music, transitions and captions. In the panel, press **Make a first cut…** and say what the video is (length, mood and what to include are optional). In Claude's apps, pick the ready-made **First cut** prompt, or just describe the video.
+- **Undo takes it back.** Changes Claude makes close together undo in one step, and anything you change by hand in the meantime stays its own step.
+- **What Claude sees:** what you ask, the project outline (clip and file names, times, texts and captions), transcripts of what is said, and the still frames it asks to see. Your video and sound files stay on this computer: shot changes, dark, blurry and shaky stretches, quiet parts and transcripts are all worked out here. Claude can't export, save or delete files. See [Privacy](#privacy) for where that goes.
+- **Setting it up:**
+  - **Claude's desktop app:** in the Assistant window, **Save the connector file** and open it with Claude's desktop app.
+  - **Claude Code:** the Assistant window shows a one-line command to copy.
+  - **Other apps that take connectors:** the window shows the configuration to copy.
+- Claude uses your own Claude account: your plan through Claude's apps, or your developer account through your API key in the panel. Current never signs you in to Claude.
+
 ## Audio
 
 ![Audio tools](docs/screenshots/audio.png)
@@ -162,6 +180,24 @@ CURRENT_RECORDING_DIR=tests/out/recordings npx electron . --selftest=tests/scree
 CURRENT_FAKE_WHISPER=tests/fixtures/whisper-words.json npx electron . --selftest=tests/captions.js
 ```
 
+Claude's editing tools and media analysis (`src/js/agent/`) are tested the same way. `tests/make-media.sh` writes the clip with a known cut, dark, quiet and blurred stretch that the analysis is checked against:
+
+```bash
+CURRENT_FAKE_WHISPER=tests/fixtures/whisper-words.json npx electron . --selftest=tests/agent-tools.js
+```
+
+The connector (`mcp/bridge.js`) is started the way Claude's apps start it, and driven with MCP messages. It also checks that `mcp/catalog.json` matches the tools, and rewrites it if it doesn't:
+
+```bash
+CURRENT_ASSISTANT_SOCKET=tests/out/assistant.sock CURRENT_BUNDLE_PATH=tests/out/Current.mcpb CURRENT_FAKE_WHISPER=tests/fixtures/whisper-words.json npx electron . --selftest=tests/connector.js
+```
+
+The Assistant panel is tested with a scripted Claude in place of the real one. It checks the key setup, what is sent to Claude, the steps shown, Stop, errors and the First cut form:
+
+```bash
+CURRENT_ASSISTANT_SOCKET=tests/out/assistant.sock CURRENT_FAKE_CLAUDE=1 CURRENT_FAKE_WHISPER=tests/fixtures/whisper-words.json npx electron . --selftest=tests/panel.js
+```
+
 To check real captions on any narrated video (needs `whisper.cpp`; downloads the 60 MB model the first time), link the video as `tests/out/speech.mp4`. The timing checks expect a sentence starting "Find the" at about 29.5 s, so change that check for another video:
 
 ```bash
@@ -180,6 +216,19 @@ The smoke test compiles every shader, draws every template at several points in 
 
 The editor is an Electron app. Each frame is composited in WebGL 2: every clip is placed into a frame-sized layer (transform, crop, chroma key), graded, run through its effects, mixed with its neighbour by a transition shader and blended onto the layers below. Titles, stickers and backgrounds are drawn with Canvas 2D. Audio plays through Web Audio effect chains. Export renders frame by frame with frame-exact seeking, mixes the audio offline through the same effect chains, and pipes raw frames and audio into GStreamer (x264, VP9, AAC, Opus, LAME).
 
+## Privacy
+
+Current has no accounts, analytics or tracking, and sends nothing to webhookstudios. Your projects, media and settings stay on your computer. Current goes online only:
+
+- **The first time you make captions,** to download the speech model (60 MB, or 190 MB for the most accurate one) from Hugging Face. It is checked against its published checksum. The speech itself is heard on your computer.
+- **When you use the Assistant,** to reach Claude, which Anthropic runs:
+  - **In the panel,** Current sends Anthropic what you ask, the project outline (clip and file names, times, texts and captions), transcripts of what is said, and the still frames Claude asks to see, using your own API key. Anthropic handles this under your API agreement with them ([Commercial Terms](https://www.anthropic.com/legal/commercial-terms), [Usage Policy](https://www.anthropic.com/legal/aup)) and its [Privacy Policy](https://www.anthropic.com/legal/privacy).
+  - **Through Claude's own apps,** the same information goes to Anthropic through that app, under your Claude plan's terms and Anthropic's Privacy Policy.
+  - Your video and sound files are never sent, and webhookstudios never sees any of it. You can stop Claude looking at frames in the panel's menu.
+- **The API key** is kept encrypted with your system's keyring, in Current's settings folder (`~/.config/Current`), and is sent only to Anthropic. **Remove API key** in the panel's menu deletes it.
+
 ## License
 
-GPL-2.0-or-later. Bundled fonts are under the SIL Open Font License 1.1.
+GPL-2.0-or-later. Bundled fonts are under the SIL Open Font License 1.1. Anthropic's SDK, which the Assistant uses, and the packages it needs are under the Apache 2.0, MIT and Unlicense licenses; each license is in the package's folder.
+
+Claude is a trademark of Anthropic, PBC. Current is an independent app, not made or endorsed by Anthropic.

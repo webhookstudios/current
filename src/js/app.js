@@ -15,6 +15,10 @@ import { openCaptions, openCaptionEditor } from './ui/captions.js';
 import { loadBrand } from './brand.js';
 import { brandChip, brandMenu, openBrandKits } from './ui/brand.js';
 import { clipItems, toolsItems, selectedClip, inspect } from './ui/clipmenu.js';
+import { assistantPill } from './ui/assistant.js';
+import { initPanel, panelButton } from './ui/panel.js';
+import { ONLINE, TRADEMARK } from './agent/privacy.js';
+import { initConnector } from './agent/connector.js';
 import { PROJECT_TEMPLATES } from './templates/projects.js';
 import { packById } from './templates/packs.js';
 import { drawPreview, makeThumbCanvas } from './ui/previews.js';
@@ -52,6 +56,8 @@ async function boot() {
   initTips();
   initSplitters();
   initShortcuts();
+  initConnector();
+  initPanel();
   store.on('change', updateTitle);
   store.on('media', updateTitle);
   window.addEventListener('dragover', (e) => e.preventDefault());
@@ -127,6 +133,8 @@ function buildTopbar() {
     ]),
     h('div.proj-name', dirtyDot, nameInput),
     h('div.top-right',
+      assistantPill(),
+      panelButton(),
       brandChip(),
       h('button.btn', { onclick: () => saveProject(false) }, icon('save', 15), 'Save'),
       h('button.btn.primary', { onclick: openExport }, icon('download', 15), 'Export')),
@@ -356,7 +364,7 @@ function showWhatsNew() {
 }
 async function showAbout() {
   const info = await window.native.info();
-  modal({ title: 'About Current', body: h('div', { style: { width: '420px', lineHeight: 1.6 } }, h('div.start-logo', h('img', { src: 'img/logo.svg' }), 'Current'), h('p', `Version ${info.version}. A template-rich video editor by webhookstudios. Part of the Sedge family of apps.`), h('p.hint', 'Rendering uses WebGL; export uses GStreamer (x264, VP9, AAC, Opus, LAME). Bundled fonts are under the SIL Open Font License.')) });
+  modal({ title: 'About Current', body: h('div', { style: { width: '420px', lineHeight: 1.6 } }, h('div.start-logo', h('img', { src: 'img/logo.svg' }), 'Current'), h('p', `Version ${info.version}. A template-rich video editor by webhookstudios. Part of the Sedge family of apps.`), h('p.hint', 'Rendering uses WebGL; export uses GStreamer (x264, VP9, AAC, Opus, LAME). Bundled fonts are under the SIL Open Font License. The Assistant uses Anthropic’s SDK (Apache 2.0).'), h('p.hint', ONLINE), h('p.hint', TRADEMARK)) });
 }
 
 function initShortcuts() {

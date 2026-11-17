@@ -138,6 +138,39 @@ async function speechAudio(clips, from, to) {
   return octx.startRendering();
 }
 
+// The words spoken in clips between from and to (timeline seconds), timed on the timeline. Runs on this
+// computer. download: fetch the speech model if it is missing (otherwise that is an error).
+// onStage('download' | 'prepare' | 'listen') reports progress; cancelled() stops after the download.
+export async function transcribeClips(clips, from, to, { model = 'standard', lang = 'auto', download = true, onStage = () => {}, cancelled = () => false } = {}) {
+  const status = await window.native.captionsStatus();
+  if (!status.engine) throw new Error('Speech recognition is not installed (sudo apt install whisper.cpp).');
+  if (!status.models[model].have) {
+    if (!download) throw new Error(`The speech model (${Math.round(status.models[model].size / 1e6)} MB) has not been downloaded yet.`);
+    onStage('download');
+    await window.native.captionsDownload(model);
+  }
+  if (cancelled()) throw new Error('Cancelled');
+  onStage('prepare');
+  const audio = await speechAudio(clips, from, to);
+  if (!audio) throw new Error('These clips have no sound to caption.');
+  const path = await window.native.cacheWrite(`captions-${Date.now()}.wav`, encodeWav(audio));
+  onStage('listen');
+  const heard = await window.native.captionsTranscribe(path, model, lang);
+  return fitWordsToSound(heard, audio.getChannelData(0), audio.sampleRate).map((w) => ({ ...w, t0: w.t0 + from, t1: w.t1 + from }));
+}
+
+// Put caption clips on the Captions track, replacing captions already between from and to. One undo step.
+export function placeCaptions(made, from, to, mode) {
+  edit(() => {
+    const old = captionClips().filter((c) => c.start < to && c.start + c.duration > from).map((c) => c.id);
+    removeClips(old);
+    const track = captionTrack();
+    for (const c of made) { c.trackId = track.id; addClip(c, { overwrite: false }); }
+    store.project.captions = { ...(store.project.captions || {}), mode };
+    select([]);
+  });
+}
+
 // ---------- Generate captions ----------
 export async function openCaptions() {
   if (!store.project) return;
@@ -194,32 +227,19 @@ async function generate(o, clip, voices) {
     label.textContent = phase === 'download' ? `Downloading the speech model… ${Math.round(p * 100)}%` : `Listening… ${Math.round(p * 100)}%`;
   });
   try {
-    const status = await window.native.captionsStatus();
-    if (!status.models[o.model].have) {
-      info.textContent = 'This happens once. Later captions start right away.';
-      await window.native.captionsDownload(o.model);
-    }
-    if (cancelled) return;
-    label.textContent = 'Preparing the sound…'; info.textContent = '';
-    const audio = await speechAudio(clips, from, to);
-    if (!audio) throw new Error('These clips have no sound to caption.');
-    const path = await window.native.cacheWrite(`captions-${Date.now()}.wav`, encodeWav(audio));
-    label.textContent = 'Listening… 0%';
-    info.textContent = 'Speech recognition runs on this computer. Longer videos take a little while.';
-    const heard = await window.native.captionsTranscribe(path, o.model, o.lang);
-    const words = fitWordsToSound(heard, audio.getChannelData(0), audio.sampleRate).map((w) => ({ ...w, t0: w.t0 + from, t1: w.t1 + from }));
+    const words = await transcribeClips(clips, from, to, {
+      model: o.model, lang: o.lang, cancelled: () => cancelled,
+      onStage: (stage) => {
+        if (stage === 'download') info.textContent = 'This happens once. Later captions start right away.';
+        if (stage === 'prepare') { label.textContent = 'Preparing the sound…'; info.textContent = ''; }
+        if (stage === 'listen') { label.textContent = 'Listening… 0%'; info.textContent = 'Speech recognition runs on this computer. Longer videos take a little while.'; }
+      },
+    });
     if (cancelled) return;
     m.close();
     if (!words.length) { toast('No speech was found, so no captions were added.', 'err', 6000); return; }
     const made = buildCaptions(words, o);
-    edit(() => {
-      const old = captionClips().filter((c) => c.start < to && c.start + c.duration > from).map((c) => c.id);
-      removeClips(old);
-      const track = captionTrack();
-      for (const c of made) { c.trackId = track.id; addClip(c, { overwrite: false }); }
-      store.project.captions = { ...(store.project.captions || {}), mode: o.mode };
-      select([]);
-    });
+    placeCaptions(made, from, to, o.mode);
     app.player.seek(store.time);
     toast(`${made.length} captions added on the Captions track. Edit them in Tools › Edit captions, or select one to change it.`, '', 7000);
   } catch (e) {

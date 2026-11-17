@@ -9,6 +9,7 @@ import { openCaptions, openCaptionEditor, captionClips, captionMode, CAPTION_MOD
 import { openVoiceover } from './voiceover.js';
 import { openScreenRecord } from './screenrec.js';
 import { toast } from './widgets.js';
+import { openAssistant } from './assistant.js';
 
 // Open a tab of the clip panel on the right, and optionally scroll to one of its sections.
 export const inspect = (tab, sectionTitle) => store.emit('inspect', tab, sectionTitle);
@@ -77,6 +78,8 @@ export function toolsItems() {
     '-',
     { label: 'Generate captions…', icon: 'cc', run: openCaptions },
     { label: 'Edit captions…', icon: 'text', disabled: !captionClips().length, run: openCaptionEditor },
+    '-',
+    { label: 'Assistant…', icon: 'chat', run: openAssistant },
     '-',
     ...CAPTION_MODES.map(([v]) => ({ label: MODE_LABELS[v], icon: mode === v ? 'check' : null, run: () => edit(() => { store.project.captions = { ...(store.project.captions || {}), mode: v }; }) })),
   ];
