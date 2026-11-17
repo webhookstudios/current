@@ -12,6 +12,8 @@ if [ "$(uname)" = Darwin ]; then
   "$FF" $Q -f lavfi -i "smptebars=size=1280x720:rate=30:duration=10" -c:v libx264 -preset ultrafast -pix_fmt yuv420p "$D/test2.mp4"
   "$FF" $Q -f lavfi -i "color=c=0x00c040:size=1280x720:rate=30:duration=5,drawbox=x=560:y=280:w=160:h=160:color=0xff3060:t=fill" -c:v libx264 -preset ultrafast -pix_fmt yuv420p "$D/green.mp4"
   "$FF" $Q -f lavfi -i "testsrc=size=1600x1200:rate=1:duration=1" -frames:v 1 "$D/photo.png"
+  # analysis.mp4, as below: 0-4 s sharp checkers + 440 Hz, 4-6 s black and silent, 6-10 s blurred bars + 660 Hz
+  "$FF" $Q -filter_complex "color=size=640x360:rate=30:duration=4,format=gray,geq=lum='if(mod(floor(X/8)+floor(Y/8)\,2)\,235\,16)',format=yuv420p[v0];color=c=black:size=640x360:rate=30:duration=2,format=yuv420p[v1];smptebars=size=640x360:rate=30:duration=4,gblur=sigma=6,format=yuv420p[v2];sine=frequency=440:sample_rate=44100:duration=4,volume=0.3[a0];anullsrc=r=44100:cl=mono,atrim=duration=2[a1];sine=frequency=660:sample_rate=44100:duration=4,volume=0.3[a2];[v0][a0][v1][a1][v2][a2]concat=n=3:v=1:a=1[v][a]" -map "[v]" -map "[a]" -c:v libx264 -preset ultrafast -g 30 -pix_fmt yuv420p -c:a aac "$D/analysis.mp4"
   echo "Test media written to $D"
   exit 0
 fi
