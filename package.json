@@ -1,7 +1,7 @@
 {
   "name": "current",
   "productName": "Current",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "A template-rich video editor for Ubuntu",
   "main": "main.js",
   "desktopName": "io.github.webhookstudios.Current.desktop",
@@ -27,8 +27,13 @@
       "main.js",
       "encoder.js",
       "preload.js",
+      "assistant.js",
+      "mcp/**/*",
       "src/**/*",
       "data/io.github.webhookstudios.Current.png"
+    ],
+    "asarUnpack": [
+      "mcp/**/*"
     ],
     "extraResources": [
       {
@@ -78,5 +83,8 @@
     "dmg": {
       "title": "Current"
     }
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.9.0"
   }
 }

@@ -63,10 +63,6 @@ html.mac .aspect.on { background: rgba(79, 179, 165, 0.18); box-shadow: 0 1px 2p
 
 /* ---------- start screen ---------- */
 html.mac .start-side { padding-top: 64px; }
-/* the size picker sits in the middle of the panel: logo at the top, buttons at the bottom */
-html.mac .start-side { position: relative; }
-html.mac .start-size { position: absolute; left: 36px; right: 36px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; }
-html.mac .start-side > .btn.primary.big { margin-top: auto; }
 html.mac .start::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 40px; -webkit-app-region: drag; z-index: 1; } /* drag the window from the top edge */
 
 /* ---------- sheets: dialogs drop from the top bar ---------- */

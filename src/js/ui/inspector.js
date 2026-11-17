@@ -101,7 +101,7 @@ function renderProject(n) {
   const aspect = Object.entries(ASPECTS).find(([, [w, hh]]) => w === p.width && hh === p.height)?.[0] || 'custom';
   bodyEl.replaceChildren(
     section('Project settings',
-      select({ label: 'Aspect ratio', value: aspect, options: [...Object.keys(ASPECTS).map((k) => [k, { '16:9': '16:9 Widescreen', '9:16': '9:16 Vertical (Shorts, Reels)', '1:1': '1:1 Square', '4:5': '4:5 Portrait', '4:3': '4:3 Standard', '21:9': '21:9 Cinema' }[k]]), ...(aspect === 'custom' ? [['custom', 'Custom']] : [])], onChange: (v) => edit(() => { [p.width, p.height] = ASPECTS[v]; }) }),
+      select({ label: 'Aspect ratio', value: aspect, options: [...Object.keys(ASPECTS).map((k) => [k, { '16:9': '16:9 Widescreen', '9:16': '9:16 Vertical', '1:1': '1:1 Square', '4:5': '4:5 Portrait', '4:3': '4:3 Standard', '21:9': '21:9 Cinema' }[k]]), ...(aspect === 'custom' ? [['custom', 'Custom']] : [])], onChange: (v) => edit(() => { [p.width, p.height] = ASPECTS[v]; }) }),
       select({ label: 'Resolution', value: String(p.height <= p.width ? p.height : p.width), options: [['720', '720p'], ['1080', '1080p'], ['1440', '1440p'], ['2160', '4K']], onChange: (v) => edit(() => { const s = +v / Math.min(p.width, p.height); p.width = Math.round(p.width * s / 2) * 2; p.height = Math.round(p.height * s / 2) * 2; }) }),
       select({ label: 'Frame rate', value: String(p.fps), options: [['24', '24 fps'], ['25', '25 fps'], ['30', '30 fps'], ['50', '50 fps'], ['60', '60 fps']], onChange: (v) => edit(() => { p.fps = +v; }) }),
       colorRow({ label: 'Background', value: p.background, onStart: checkpoint, onInput: (v) => { p.background = v; changed('drag'); app.player.requestRender(); }, onChange: () => changed() }),

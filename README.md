@@ -10,7 +10,7 @@ A video editor built around ready-made templates. Drag animated titles, transiti
 
 | Library | Count | Examples |
 |---|---|---|
-| Starter templates | 12 | YouTube vlog, travel montage, travel highlights, product promo, tutorial, podcast clip (1:1), reel/short (9:16), birthday, family memories, gaming highlights, wedding, year in review |
+| Starter templates | 12 | vlog, travel montage, travel highlights, product promo, tutorial, podcast clip (1:1), vertical clip (9:16), birthday, family memories, gaming highlights, wedding, year in review |
 | Sequences | 280 | Ready-made pieces built from separate clips, so every text, number and piece can be edited and moved. **Intros** and **Outros** (40 each), including fifteen professional pairs where each intro has a matching outro: Block Reveal, Lesson Opener, Side Panel, Line Frame, Bold Bands, Chart Rise, Chapter Number, Monogram, Shutter, and six charts (Line Climb, Donut Fill, Big Number, Stacked Columns, Ranking Bars, Milestone Timeline). **Education** mid-rolls (40): Lesson Agenda and Recap, Key Term, Quick Quiz, True or False, Step by Step, Formula, Worked Example, Activity Timer (a real countdown for any length), Exit Ticket, Fill in the Blank, Myth vs Fact and more. **Professional** mid-rolls (40): Big Number, Before / After, Roadmap, Team Member, Customer Quote, Pricing Plans, FAQ, Do’s and Don’ts, Action Items, Why Choose Us, Visit Us, Special Offer, SWOT, Event Date and more, none with charts that would need real company numbers. **News**, **Gaming** and **Travel** (40 each): ten intros with matching outros and twenty mid-rolls in each, from Breaking Bulletin, Weather Forecast and Fact Check to Press Start, Patch Notes and Tier List, and Boarding Pass, Packing List and Local Phrase |
 | Titles | 105 | Openers, professional (with a matching lower third for each professional style), lower thirds, subtitles (incl. word highlight), social, callouts, quotes, countdowns, end credits |
 | Transitions | 85 | Dissolves, dips, wipes, slides, whip pans, zooms, spins, 3D cube/flip/page turn, glitch, film burn, light leak, shapes |
@@ -18,7 +18,7 @@ A video editor built around ready-made templates. Drag animated titles, transiti
 | Filters | 50 | Cinematic, film stocks, vintage, black & white, moods, food & travel |
 | Stickers | 100 | Animated emoji, 20 annotations (circles, highlighter, tooltips, star rating, spotlight…), 15 arrows (straight, double, block, elbow, U-turn, rotate, curved, neon, rainbow, sparkle trail…), confetti, frames |
 | Backgrounds | 78 | Solid colours (incl. green/blue screen), gradients, radial glows, animated, patterns, scenes and textures |
-| Audio | 80 | 50 music tracks and 30 sound effects, generated on first use |
+| Audio | 80 | 50 music tracks, each with its own instruments, song sections and tune, and 30 sound effects, all made on your computer the first time you use them |
 | Fonts | 22 | Bundled display and script fonts for titles |
 
 Every card animates when you hover over it, and the **+** button adds it at the playhead. Hover a music, sound or video card and press play to hear it first. Click the star on any card in Audio, Sequences, Titles, Transitions, Effects, Filters or Stickers to keep it in that tab’s **Favorites** group.
@@ -54,6 +54,24 @@ New projects start blank. The start screen also offers the 12 starter templates;
 
 Save your colours, a heading font, a logo, your company name and initials as a brand kit. Keep as many kits as you like, pick the one in use from the Brand menu or the button in the top bar, or switch branding off entirely. While a kit is on, the titles, stickers and sequences you add take its colours and font (whites, blacks and greys stay, so text stays readable), the library previews show your look, and the Monogram intro and lower third use your initials. **Apply brand** recolours clips you already added, and **Add logo at playhead** puts your logo in the corner.
 
+## Editing with Claude
+
+Ask Claude to edit the project you have open. For example: "make a 60-second travel recap from my clips, upbeat, with captions", or "cut the long pauses and add the Boarding Pass intro". Claude builds or changes the video while you watch, and the top bar shows when it is working. There are two ways in:
+
+- **The Assistant panel in Current** (the speech-bubble button in the top bar). Paste your own Claude API key once; requests are billed to that Claude developer account. A small edit usually costs a few cents, and a first cut about a dollar. The panel lists each step Claude takes, then what it changed and what it used, with **Undo all of this**. The key is kept encrypted with your system's keyring.
+- **Claude's own apps, with your Claude plan.** Turn on **Tools › Assistant › Let Claude edit in Current**, then ask in Claude's desktop app or Claude Code.
+
+Either way:
+
+- **A first cut from your own media.** Add your videos, photos and sound to Project Media. Claude looks through them, picks and orders the best moments, trims them, and adds an intro and outro, titles, music, transitions and captions. In the panel, press **Make a first cut…** and say what the video is (length, mood and what to include are optional). In Claude's apps, pick the ready-made **First cut** prompt, or just describe the video.
+- **Undo takes it back.** Changes Claude makes close together undo in one step, and anything you change by hand in the meantime stays its own step.
+- **What Claude sees:** what you ask, the project outline (clip and file names, times, texts and captions), transcripts of what is said, and the still frames it asks to see. Your video and sound files stay on this computer: shot changes, dark, blurry and shaky stretches, quiet parts and transcripts are all worked out here. Claude can't export, save or delete files. See [Privacy](#privacy) for where that goes.
+- **Setting it up:**
+  - **Claude's desktop app:** in the Assistant window, **Save the connector file** and open it with Claude's desktop app.
+  - **Claude Code:** the Assistant window shows a one-line command to copy.
+  - **Other apps that take connectors:** the window shows the configuration to copy.
+- Claude uses your own Claude account: your plan through Claude's apps, or your developer account through your API key in the panel. Current never signs you in to Claude.
+
 ## Audio
 
 ![Audio tools](docs/screenshots/audio.png)
@@ -80,10 +98,10 @@ Current has only been tested on Ubuntu 26.04.
 
 ### With the deb package (recommended)
 
-Download `current_1.6.0_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
+Download `current_1.7.0_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
 
 ```bash
-sudo apt install ./current_1.6.0_amd64.deb
+sudo apt install ./current_1.7.0_amd64.deb
 ```
 
 Open **Current** from the apps menu. To remove it:
@@ -108,7 +126,7 @@ Or run it straight from the checkout with `npm start`.
 
 | To do this | Do this |
 |---|---|
-| Start a project | Pick an aspect ratio (16:9, 9:16 for Shorts and Reels, 1:1, 4:5, 4:3, 21:9) and click **New Project** |
+| Start a project | Pick an aspect ratio (16:9 widescreen, 9:16 vertical, 1:1 square, 4:5 portrait, 4:3 classic or 21:9 cinema) and click **New Project** |
 | Add media | Click **Import**, or drop files on the library or straight onto the timeline |
 | Add a template | Drag it to a track, or hover and click **+** |
 | Add a transition | Drop it on the cut between two clips (or on a clip's start or end to fade from or to black) |
@@ -202,6 +220,24 @@ CURRENT_RECORDING_DIR=tests/out/recordings npx electron . --selftest=tests/scree
 CURRENT_FAKE_WHISPER=tests/fixtures/whisper-words.json npx electron . --selftest=tests/captions.js
 ```
 
+Claude's editing tools and media analysis (`src/js/agent/`) are tested the same way. `tests/make-media.sh` writes the clip with a known cut, dark, quiet and blurred stretch that the analysis is checked against:
+
+```bash
+CURRENT_FAKE_WHISPER=tests/fixtures/whisper-words.json npx electron . --selftest=tests/agent-tools.js
+```
+
+The connector (`mcp/bridge.js`) is started the way Claude's apps start it, and driven with MCP messages. It also checks that `mcp/catalog.json` matches the tools, and rewrites it if it doesn't:
+
+```bash
+CURRENT_ASSISTANT_SOCKET=tests/out/assistant.sock CURRENT_BUNDLE_PATH=tests/out/Current.mcpb CURRENT_FAKE_WHISPER=tests/fixtures/whisper-words.json npx electron . --selftest=tests/connector.js
+```
+
+The Assistant panel is tested with a scripted Claude in place of the real one. It checks the key setup, what is sent to Claude, the steps shown, Stop, errors and the First cut form:
+
+```bash
+CURRENT_ASSISTANT_SOCKET=tests/out/assistant.sock CURRENT_FAKE_CLAUDE=1 CURRENT_FAKE_WHISPER=tests/fixtures/whisper-words.json npx electron . --selftest=tests/panel.js
+```
+
 To check real captions on any narrated video (needs `whisper.cpp`; downloads the 60 MB model the first time), link the video as `tests/out/speech.mp4`. The timing checks expect a sentence starting "Find the" at about 29.5 s, so change that check for another video:
 
 ```bash
@@ -220,6 +256,19 @@ The smoke test compiles every shader, draws every template at several points in 
 
 The editor is an Electron app. Each frame is composited in WebGL 2: every clip is placed into a frame-sized layer (transform, crop, chroma key), graded, run through its effects, mixed with its neighbour by a transition shader and blended onto the layers below. Titles, stickers and backgrounds are drawn with Canvas 2D. Audio plays through Web Audio effect chains. Export renders frame by frame with frame-exact seeking, mixes the audio offline through the same effect chains, and pipes raw frames and audio into GStreamer on Ubuntu, or the bundled ffmpeg on a Mac (x264, VP9, AAC, Opus, LAME).
 
+## Privacy
+
+Current has no accounts, analytics or tracking, and sends nothing to webhookstudios. Your projects, media and settings stay on your computer. Current goes online only:
+
+- **The first time you make captions,** to download the speech model (60 MB, or 190 MB for the most accurate one) from Hugging Face. It is checked against its published checksum. The speech itself is heard on your computer.
+- **When you use the Assistant,** to reach Claude, which Anthropic runs:
+  - **In the panel,** Current sends Anthropic what you ask, the project outline (clip and file names, times, texts and captions), transcripts of what is said, and the still frames Claude asks to see, using your own API key. Anthropic handles this under your API agreement with them ([Commercial Terms](https://www.anthropic.com/legal/commercial-terms), [Usage Policy](https://www.anthropic.com/legal/aup)) and its [Privacy Policy](https://www.anthropic.com/legal/privacy).
+  - **Through Claude's own apps,** the same information goes to Anthropic through that app, under your Claude plan's terms and Anthropic's Privacy Policy.
+  - Your video and sound files are never sent, and webhookstudios never sees any of it. You can stop Claude looking at frames in the panel's menu.
+- **The API key** is kept encrypted with your system's keyring (the Keychain on a Mac), in Current's settings folder (`~/.config/Current` on Ubuntu, `~/Library/Application Support/Current` on a Mac), and is sent only to Anthropic. **Remove API key** in the panel's menu deletes it.
+
 ## License
 
-GPL-2.0-or-later. Bundled fonts are under the SIL Open Font License 1.1, except DejaVu Serif (its own free licence, `src/fonts/LICENSE-DejaVu.txt`). The Mac app also includes ffmpeg (GPL-3.0-or-later; its licence and a link to its exact source are in the app's `Contents/Resources/licenses`) and whisper.cpp (MIT).
+GPL-2.0-or-later. Bundled fonts are under the SIL Open Font License 1.1, except DejaVu Serif (its own free licence, `src/fonts/LICENSE-DejaVu.txt`). The Mac app also includes ffmpeg (GPL-3.0-or-later; its licence and a link to its exact source are in the app's `Contents/Resources/licenses`) and whisper.cpp (MIT). Anthropic's SDK, which the Assistant uses, and the packages it needs are under the Apache 2.0, MIT and Unlicense licenses; each license is in the package's folder.
+
+Claude is a trademark of Anthropic, PBC. Current is an independent app, not made or endorsed by Anthropic.

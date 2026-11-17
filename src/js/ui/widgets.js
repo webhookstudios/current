@@ -68,7 +68,7 @@ export function menuData(items, runs, edit = {}) {
   return items.filter(Boolean).map((it) => {
     if (it === '-') return { sep: true };
     const id = runs.push(it.run) - 1;
-    return { id, label: it.label, kbd: it.kbd, enabled: !it.disabled, edit: edit[it.label] };
+    return { id, label: it.label, kbd: it.kbd, enabled: !it.disabled, edit: edit[it.label], checked: it.icon === 'check' };
   });
 }
 export function closeMenu() { openMenu?.remove(); openMenu = null; document.querySelectorAll('.menu-btn.open').forEach((b) => b.classList.remove('open')); }

@@ -117,7 +117,21 @@ export function maxDuration(c) {
 // ---------- history ----------
 const snapshot = () => JSON.stringify(store.project);
 
+// While a group is open (one request from the assistant, made of many edits), only its first
+// checkpoint is kept, so Undo takes back the whole request at once. Groups can nest; the outermost
+// one decides.
+let group = null;
+export function beginGroup() { if (group) group.depth++; else group = { taken: false, depth: 1, busy: 0 }; }
+export function endGroup() { if (group && --group.depth <= 0) group = null; }
+// The assistant is running a tool, so checkpoints now belong to its group. A checkpoint at any other
+// time is the person editing in between: it stays its own step, and the assistant's next edit starts
+// a new one.
+export function groupBusy(on) { if (group) group.busy = Math.max(0, group.busy + (on ? 1 : -1)); }
+
 export function checkpoint() {
+  if (group) {
+    if (group.busy) { if (group.taken) return; group.taken = true; } else group.taken = false;
+  }
   store.undoStack.push(snapshot());
   if (store.undoStack.length > 200) store.undoStack.shift();
   store.redoStack.length = 0;

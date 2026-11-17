@@ -40,7 +40,8 @@ export function openExport() {
     const [W, H] = dims(s.res);
     const est = isAudio ? dur * 32000 : dur * W * H * s.fps * ({ high: 0.11, medium: 0.07, low: 0.04 }[s.quality]) / 8 * (s.format === 'webm' ? 0.8 : 1) + dur * 32000;
     const nameIn = h('input.grow', { type: 'text', value: s.name, oninput: () => { s.name = nameIn.value; } });
-    set.replaceChildren(
+    // Rows that don't apply are null; replaceChildren would print them as the word "null", so drop them.
+    set.replaceChildren(...[
       h('div.exp-thumb', thumb),
       h('div.row', h('label', 'Name'), nameIn),
       isAudio ? null : h('div.row', h('label', 'Resolution'), h('select.grow', { onchange: (e) => { s.res = +e.target.value; draw(); } }, sizes.map((r) => { const [w, hh] = dims(r); return h('option', { value: r, selected: r === s.res }, `${r === 2160 ? '4K' : r + 'p'} · ${w}×${hh}`); }))),
@@ -49,7 +50,7 @@ export function openExport() {
       hasCaptions ? h('div.row', h('label', 'Captions'), h('select.grow', { onchange: (e) => { s.captions = e.target.value; } }, CAPTION_MODES.map(([v, n]) => h('option', { value: v, selected: s.captions === v }, n)))) : null,
       h('div.row', h('label', 'Duration'), h('span', fmtTime(dur, p.fps).replace(/^00:/, ''))),
       h('div.row', h('label', 'Estimated size'), h('span', `about ${fmtBytes(est)}`)),
-    );
+    ].filter(Boolean));
   };
   draw();
   modal({

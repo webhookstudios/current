@@ -106,13 +106,13 @@ export function initTimeline(el) {
 
 // ---------- zoom ----------
 // macOS: the slider is logarithmic on both sides of the default zoom (80 px/s), which sits in the middle,
-// and its blue part ends at the thumb. Linux keeps its original slider.
+// on Linux it keeps its original scale. On both, the blue part ends at the thumb.
 const ZMIN = 4, ZMID = 80, ZMAX = 400;
 const sliderToZoom = (v) => (!IS_MAC ? 4 * Math.pow(400 / 4, v / 100)
   : v <= 50 ? ZMIN * Math.pow(ZMID / ZMIN, v / 50) : ZMID * Math.pow(ZMAX / ZMID, (v - 50) / 50));
 const zoomToSlider = (z) => (!IS_MAC ? (Math.log(z / 4) / Math.log(100)) * 100
   : z <= ZMID ? 50 * Math.log(z / ZMIN) / Math.log(ZMID / ZMIN) : 50 + 50 * Math.log(z / ZMID) / Math.log(ZMAX / ZMID));
-const paintZoom = () => { if (IS_MAC) zoomRange.style.setProperty('--fill', `${zoomRange.value}%`); };
+const paintZoom = () => zoomRange.style.setProperty('--fill', `${zoomRange.value}%`);
 export function setZoom(z, anchorX) {
   const old = store.zoom;
   z = clamp(z, 4, 400);
