@@ -26,7 +26,10 @@ try {
   check(!/M4\.9 4\.9/.test(svg('freeze')) && /rect/.test(svg('freeze')), 'freeze frame is a frame with pause bars, not a burst of rays');
   check(svg('sparkle') === svg('info') && !/M5\.6 5\.6/.test(svg('brand')), 'the burst-of-rays icon is gone; brand kits use a swatch book');
   // start screen
-  check(!!document.querySelector('.start-news'), 'the start screen links to What’s new');
+  // the start screen is only the logo, the size picker and the project buttons (What’s new is in Help)
+  check(!document.querySelector('.start-tag') && !document.querySelector('.start-news'), 'the start screen has no tagline or What’s new button');
+  const sz = document.querySelector('.start-size')?.getBoundingClientRect(), side = document.querySelector('.start-side')?.getBoundingClientRect(), acts = document.querySelector('.start-actions')?.getBoundingClientRect();
+  check(sz && Math.abs((sz.top + sz.bottom) / 2 - (side.top + side.bottom) / 2) < 3 && Math.abs(acts.bottom - (side.bottom - 48)) < 2, 'the size picker sits in the middle of the panel and the buttons at the bottom');
   document.querySelector('.start button.primary')?.click();
   await shot('nav-0');
   W = await import(base + 'ui/widgets.js');

@@ -1,7 +1,17 @@
-// Built-in sound effects and music beds, synthesised with an OfflineAudioContext the first time
+// Built-in sound effects and music (engine/musicgen.js, tracks in songs.js), synthesised the first time
 // they are used and cached as WAV files, so they behave like any imported audio file.
 import { rng } from '../util.js';
 import { encodeWav } from '../engine/audio.js';
+import { renderSong } from '../engine/musicgen.js';
+import { SONGS } from './songs.js';
+
+// Music: each track is rendered by the music engine and played into the offline context as one buffer.
+const song = (o) => (ctx, out) => {
+  const { L, R } = renderSong(o, ctx.length / ctx.sampleRate);
+  const b = ctx.createBuffer(2, L.length, ctx.sampleRate);
+  b.copyToChannel(L, 0); b.copyToChannel(R, 1);
+  const src = ctx.createBufferSource(); src.buffer = b; src.connect(out); src.start(0);
+};
 
 const SR = 44100;
 const noiseBuf = (ctx, sec, seed = 1) => {
@@ -68,138 +78,15 @@ const SFX = [
 // beats: 4 (default) or 3 for waltz time. swing delays every second sixteenth by that share of one.
 // lead: { wave, pat, oct, vol, len, from, seed } plays a tune made once per chord, so it repeats.
 // drums: k (kick), s (snare), h (hat), and optional c (clap) and o (open hat), one letter per step.
-const NOTE = (n) => 440 * Math.pow(2, (n - 69) / 12);
-function music(o) {
-  return (ctx, out) => {
-    const beat = 60 / o.bpm, beats = o.beats || 4, steps = beats * 4;
-    const bars = o.bars || 16;
-    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3;
-    const master = ctx.createGain(); master.gain.value = 0.8; comp.connect(master); master.connect(out);
-    const prog = o.prog;
-    const sw = (s) => (s % 2 ? (o.swing || 0) * beat / 4 : 0);
-    let phrases = null;
-    if (o.lead) {
-      const r = rng(o.lead.seed || 7), pat = o.lead.pat || 'x..x..x.x.x.....';
-      phrases = prog.map(() => { let d = Math.floor(r() * 3); return [...pat.slice(0, steps)].map((ch) => { if (ch !== 'x') return null; d = Math.max(0, Math.min(5, d + [-1, 1, 1, -2, 0, 2][Math.floor(r() * 6)])); return d; }); });
-    }
-    for (let bar = 0; bar < bars; bar++) {
-      const chord = prog[bar % prog.length].map((n) => n + o.key);
-      const t0 = bar * beats * beat, len = beats * beat;
-      // pad chord
-      chord.forEach((n) => {
-        const osc = ctx.createOscillator(); osc.type = o.pad || 'triangle'; osc.frequency.value = NOTE(n + 12);
-        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = o.padCut || 1800;
-        const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.05 * (o.padVol ?? 1), t0 + 0.3); g.gain.setValueAtTime(0.05 * (o.padVol ?? 1), t0 + len - 0.2); g.gain.linearRampToValueAtTime(0.0001, t0 + len);
-        osc.connect(lp); lp.connect(g); g.connect(comp); osc.start(t0); osc.stop(t0 + len + 0.05);
-      });
-      // bass
-      for (let b = 0; b < beats; b++) { if (o.bassPat && !o.bassPat[b]) continue; tone(ctx, comp, o.bass || 'sine', NOTE(chord[0] - 12), NOTE(chord[0] - 12), t0 + b * beat, beat * 0.9, 0.28, 0.01); }
-      // arpeggio
-      if (o.arp) for (let s = 0; s < beats * 2; s++) { const n = chord[(s * (o.arpStep || 1)) % chord.length] + 24; tone(ctx, comp, o.arp, NOTE(n), NOTE(n), t0 + s * beat / 2, beat / 2 * 0.9, 0.06, 0.005); }
-      // lead tune
-      if (phrases && bar >= (o.lead.from || 0)) {
-        const ph = phrases[bar % prog.length], L = o.lead;
-        ph.forEach((d, s) => {
-          if (d == null) return;
-          const n = chord[d % chord.length] + 12 * Math.floor(d / chord.length) + (L.oct ?? 24), t = t0 + (s * beat) / 4 + sw(s);
-          tone(ctx, comp, L.wave || 'square', NOTE(n), NOTE(n), t, (beat / 4) * (L.len || 1.8), L.vol || 0.06, 0.005);
-        });
-      }
-      // drums
-      if (o.drums && bar >= (o.drumsFrom || 0)) {
-        const dr = o.drums;
-        for (let s = 0; s < steps; s++) {
-          const t = t0 + (s * beat) / 4 + sw(s);
-          if (dr.k[s] === 'x') tone(ctx, comp, 'sine', 150, 45, t, 0.25, 0.8, 0.002);
-          if (dr.s[s] === 'x') noise(ctx, comp, t, 0.16, 'bandpass', 1800, 1200, 0.35, 0.8, 0.002, s + bar * 16);
-          if (dr.h[s] === 'x') noise(ctx, comp, t, 0.05, 'highpass', 7000, 7000, 0.12, 0.7, 0.001, s * 3 + bar);
-          if (dr.c?.[s] === 'x') { noise(ctx, comp, t, 0.12, 'bandpass', 1400, 1100, 0.3, 1.2, 0.001, s * 7 + bar); noise(ctx, comp, t + 0.012, 0.14, 'bandpass', 1500, 1000, 0.25, 1.2, 0.001, s * 5 + bar); }
-          if (dr.o?.[s] === 'x') noise(ctx, comp, t, 0.3, 'highpass', 6000, 6000, 0.1, 0.7, 0.002, s * 11 + bar);
-        }
-      }
-    }
-  };
-}
-const D = {
-  pop: { k: 'x...x...x...x...', s: '....x.......x...', h: '..x...x...x...x.' },
-  lofi: { k: 'x.......x.x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
-  rock: { k: 'x.x...x.x.x...x.', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
-  half: { k: 'x...........x...', s: '........x.......', h: 'x...x...x...x...' },
-  house: { k: 'x...x...x...x...', s: '................', c: '....x.......x...', h: '..x...x...x...x.', o: '..x...x...x...x.' },
-  trap: { k: 'x.........x.....', s: '........x.......', h: 'x.x.x.xxx.x.x.xx' },
-  onedrop: { k: '........x.......', s: '........x.......', h: 'x.x.x.x.x.x.x.x.' },
-  march: { k: 'x.......x.......', s: '....x.xx....x.xx', h: '................' },
-  train: { k: 'x.......x.......', s: '..x...x...x...xx', h: 'x.x.x.x.x.x.x.x.' },
-  dnb: { k: 'x.........x.....', s: '....x.......x...', h: 'x.xxx.xxx.xxx.xx' },
-  stomp: { k: 'x...x...x...x...', s: '................', c: '....x.......x...', h: '................' },
-  shuffle: { k: 'x.....x.x.......', s: '....x.......x...', h: 'x..x..x..x..x..x' },
-  waltz: { k: 'x...........', s: '....x...x...', h: 'x.x.x.x.x.x.' },
-  bossa: { k: 'x..x..x.x..x..x.', s: '..x..x....x..x..', h: 'x.x.x.x.x.x.x.x.' },
-  minimal: { k: 'x...x...x...x...', s: '................', h: '..x...x...x...x.', c: '........x.......' },
-};
-const MUSIC = [
-  ['m-upbeat', 'Upbeat Pop', 120, { bpm: 120, key: 0, prog: [[60, 64, 67], [67, 71, 74], [69, 72, 76], [65, 69, 72]], arp: 'square', drums: D.pop, drumsFrom: 2, bassPat: [1, 0, 1, 1] }],
-  ['m-chill', 'Chill Lo-Fi', 120, { bpm: 80, key: -3, prog: [[62, 65, 69, 72], [67, 71, 74, 77], [60, 64, 67, 71], [57, 60, 64, 67]], pad: 'sine', padCut: 1200, drums: D.lofi, bass: 'triangle' }],
-  ['m-cinematic', 'Cinematic Rise', 96, { bpm: 80, key: -5, bars: 32, prog: [[57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]], pad: 'sawtooth', padCut: 900, drums: D.half, drumsFrom: 8, bassPat: [1, 0, 0, 0] }],
-  ['m-corporate', 'Bright Corporate', 120, { bpm: 110, key: 2, prog: [[60, 64, 67], [57, 60, 64], [65, 69, 72], [67, 71, 74]], arp: 'triangle', arpStep: 2, drums: D.pop, drumsFrom: 4 }],
-  ['m-rock', 'Garage Drive', 104, { bpm: 128, key: -2, bars: 28, prog: [[64, 68, 71], [64, 68, 71], [69, 73, 76], [71, 75, 78]], pad: 'sawtooth', padCut: 2400, bass: 'sawtooth', drums: D.rock }],
-  ['m-ambient', 'Calm Ambient', 120, { bpm: 60, key: 0, bars: 15, prog: [[60, 64, 67, 71], [65, 69, 72, 76], [57, 60, 64, 67], [62, 65, 69, 72]], pad: 'sine', padCut: 2000, arp: 'sine', arpStep: 3, bassPat: [1, 0, 0, 0] }],
-  ['m-synthwave', 'Neon Drive', 120, { bpm: 100, key: -4, bars: 25, prog: [[57, 60, 64], [53, 57, 60], [55, 59, 62], [52, 55, 59]], pad: 'sawtooth', padCut: 1500, arp: 'sawtooth', bass: 'sawtooth', drums: D.pop, drumsFrom: 4 }],
-  ['m-funk', 'Funky Groove', 120, { bpm: 108, key: -5, bars: 24, prog: [[57, 60, 64, 67], [62, 65, 69, 72]], arp: 'square', arpStep: 2, bass: 'square', bassPat: [1, 1, 0, 1], drums: { k: 'x..x..x...x..x..', s: '....x.......x..x', h: 'xxxxxxxxxxxxxxxx' } }],
-  ['m-piano', 'Gentle Keys', 120, { bpm: 72, key: 0, bars: 16, prog: [[60, 64, 67, 72], [57, 60, 64, 69], [65, 69, 72, 77], [67, 71, 74, 79]], pad: 'sine', padCut: 2600, arp: 'triangle', arpStep: 1, bassPat: [1, 0, 0, 0] }],
-  ['m-epic', 'Epic Trailer', 120, { bpm: 90, key: -3, bars: 28, prog: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]], pad: 'sawtooth', padCut: 1200, bass: 'sawtooth', drums: { k: 'x.......x.x.....', s: '........x.......', h: '................' }, drumsFrom: 4, bassPat: [1, 0, 1, 0] }],
-  ['m-hiphop', 'Boom Bap', 120, { bpm: 90, key: -2, bars: 22, prog: [[62, 65, 69], [60, 64, 67], [58, 62, 65], [57, 60, 64]], pad: 'triangle', padCut: 1400, bass: 'sine', drums: { k: 'x.....x...x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' } }],
-  ['m-edm', 'Festival Pulse', 120, { bpm: 126, key: 1, bars: 32, prog: [[57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]], pad: 'sawtooth', padCut: 2200, arp: 'sawtooth', arpStep: 1, bass: 'sawtooth', bassPat: [0, 1, 0, 1], drums: { k: 'x...x...x...x...', s: '....x.......x...', h: '..x...x...x...x.' }, drumsFrom: 4 }],
-  ['m-acoustic', 'Morning Acoustic', 120, { bpm: 100, key: 7, bars: 24, prog: [[55, 59, 62], [62, 66, 69], [64, 67, 71], [60, 64, 67]], pad: 'triangle', padCut: 3200, arp: 'triangle', arpStep: 1, bassPat: [1, 0, 1, 0], drums: D.half, drumsFrom: 8 }],
-  ['m-tension', 'Suspense', 120, { bpm: 70, key: -6, bars: 16, prog: [[57, 60, 63], [56, 59, 62], [57, 60, 63], [58, 61, 64]], pad: 'sawtooth', padCut: 700, bassPat: [1, 0, 0, 0], arp: 'sine', arpStep: 3 }],
-  ['m-jazz', 'Late Night Jazz', 120, { bpm: 92, key: -2, bars: 24, prog: [[62, 65, 69, 72], [67, 71, 74, 77], [60, 64, 67, 71], [57, 61, 64, 67]], pad: 'sine', padCut: 1800, bass: 'triangle', bassPat: [1, 1, 1, 1], drums: { k: 'x.......x.......', s: '........x.......', h: 'x..x..x.x..x..x.' } }],
-  ['m-kids', 'Playful Day', 120, { bpm: 140, key: 5, bars: 28, prog: [[60, 64, 67], [65, 69, 72], [67, 71, 74], [60, 64, 67]], arp: 'square', arpStep: 1, pad: 'triangle', padCut: 3500, drums: D.pop, bassPat: [1, 0, 1, 0] }],
-  ['m-chillwave', 'Sunset Chillwave', 120, { bpm: 85, key: -4, bars: 24, prog: [[60, 64, 67, 71], [57, 60, 64, 67], [53, 57, 60, 64], [55, 59, 62, 65]], pad: 'sawtooth', padCut: 1000, arp: 'sine', arpStep: 2, drums: D.lofi, bass: 'sine' }],
-  ['m-inspire', 'Inspiring Rise', 120, { bpm: 116, key: 2, bars: 28, prog: [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]], pad: 'triangle', padCut: 2400, arp: 'triangle', arpStep: 2, drums: D.pop, drumsFrom: 8, bassPat: [1, 0, 1, 1] }],
-  ['m-dark', 'Dark Pulse', 120, { bpm: 120, key: -7, bars: 24, prog: [[57, 60, 64], [57, 60, 64], [53, 57, 60], [55, 58, 62]], pad: 'sawtooth', padCut: 800, bass: 'sawtooth', bassPat: [1, 1, 1, 1], drums: { k: 'x...x...x...x...', s: '........x.......', h: '.x.x.x.x.x.x.x.x' }, drumsFrom: 4 }],
-  ['m-happy', 'Sunny Strum', 96, { bpm: 132, key: 5, bars: 26, prog: [[60, 64, 67], [65, 69, 72], [67, 71, 74], [60, 64, 67]], arp: 'triangle', pad: 'triangle', padCut: 3000, drums: D.half, bassPat: [1, 0, 1, 0] }],
-  // added in 1.6
-  ['m-house', 'Deep House Night', 0, { bpm: 122, key: -3, bars: 40, prog: [[57, 60, 64, 67], [53, 57, 60, 64], [55, 59, 62, 65], [52, 55, 59, 62]], pad: 'sawtooth', padCut: 1100, bass: 'sine', bassPat: [0, 1, 0, 1], drums: D.house, drumsFrom: 4 }],
-  ['m-trap', 'Midnight Trap', 0, { bpm: 70, key: -4, bars: 20, prog: [[57, 60, 64], [53, 57, 60], [55, 58, 62], [52, 55, 59]], pad: 'sawtooth', padCut: 800, bass: 'sine', bassPat: [1, 0, 0, 1], drums: D.trap, lead: { wave: 'triangle', pat: 'x.....x.....x...', oct: 24, vol: 0.05, seed: 3, from: 4 } }],
-  ['m-reggae', 'Island Skank', 0, { bpm: 76, key: 2, bars: 24, prog: [[60, 64, 67], [65, 69, 72], [67, 71, 74], [65, 69, 72]], pad: 'triangle', padCut: 2400, padVol: 0.6, arp: 'square', arpStep: 1, bass: 'sine', bassPat: [1, 0, 1, 0], drums: D.onedrop }],
-  ['m-waltz', 'Ballroom Waltz', 0, { bpm: 150, key: 0, beats: 3, bars: 48, prog: [[60, 64, 67], [65, 69, 72], [67, 71, 74], [60, 64, 67]], pad: 'sine', padCut: 2600, bassPat: [1, 0, 0], drums: D.waltz, drumsFrom: 8, lead: { wave: 'triangle', pat: 'x...x...x...', oct: 24, vol: 0.07, seed: 11 } }],
-  ['m-march', 'Brass Parade', 0, { bpm: 112, key: 5, bars: 32, prog: [[60, 64, 67], [67, 71, 74], [65, 69, 72], [67, 71, 74]], pad: 'sawtooth', padCut: 1800, bass: 'triangle', bassPat: [1, 0, 1, 0], drums: D.march, lead: { wave: 'sawtooth', pat: 'x.x.x...x.x.x...', oct: 12, vol: 0.05, seed: 5, from: 4 } }],
-  ['m-lullaby', 'Starlit Lullaby', 0, { bpm: 66, key: 7, bars: 16, prog: [[60, 64, 67], [57, 60, 64], [65, 69, 72], [67, 71, 74]], pad: 'sine', padCut: 1600, bassPat: [1, 0, 0, 0], lead: { wave: 'sine', pat: 'x...x...x...x...', oct: 36, vol: 0.08, len: 3, seed: 21 } }],
-  ['m-tech', 'Tech Explainer', 0, { bpm: 118, key: 2, bars: 32, prog: [[60, 64, 67, 71], [57, 60, 64, 67], [62, 65, 69, 72], [55, 59, 62, 65]], pad: 'triangle', padCut: 2000, arp: 'sine', arpStep: 2, bass: 'sine', bassPat: [1, 0, 1, 1], drums: D.minimal, drumsFrom: 4 }],
-  ['m-news', 'News Desk', 0, { bpm: 120, key: -2, bars: 32, prog: [[57, 60, 64], [57, 60, 64], [53, 57, 60], [55, 59, 62]], pad: 'sawtooth', padCut: 1300, bass: 'sawtooth', bassPat: [1, 1, 1, 1], arp: 'square', arpStep: 1, drums: { k: 'x.......x.x.....', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx' }, drumsFrom: 2 }],
-  ['m-pixel', 'Pixel Quest', 0, { bpm: 140, key: 0, bars: 40, prog: [[60, 64, 67], [57, 60, 64], [65, 69, 72], [67, 71, 74]], pad: 'square', padCut: 1600, padVol: 0.5, bass: 'square', bassPat: [1, 1, 1, 1], drums: D.pop, lead: { wave: 'square', pat: 'x.x.x.xxx.x.x.x.', oct: 24, vol: 0.05, len: 1.4, seed: 9 } }],
-  ['m-boss', 'Boss Battle', 0, { bpm: 160, key: -3, bars: 48, prog: [[57, 60, 64], [56, 60, 63], [53, 57, 60], [52, 56, 59]], pad: 'sawtooth', padCut: 1400, bass: 'sawtooth', bassPat: [1, 1, 1, 1], drums: D.rock, lead: { wave: 'square', pat: 'xx.xx.x.xx.xx.x.', oct: 24, vol: 0.05, len: 1.2, seed: 13, from: 4 } }],
-  ['m-road', 'Open Road', 0, { bpm: 104, key: 4, bars: 32, prog: [[60, 64, 67], [67, 71, 74], [69, 72, 76], [65, 69, 72]], pad: 'triangle', padCut: 3000, arp: 'triangle', arpStep: 1, bassPat: [1, 0, 1, 0], drums: D.train, drumsFrom: 4, lead: { wave: 'triangle', pat: 'x..x..x...x.x...', oct: 24, vol: 0.05, seed: 17, from: 8 } }],
-  ['m-tropical', 'Tropical Breeze', 0, { bpm: 100, key: 7, bars: 32, prog: [[60, 64, 67], [57, 60, 64], [65, 69, 72], [67, 71, 74]], pad: 'sine', padCut: 2200, padVol: 0.7, bass: 'sine', bassPat: [1, 0, 1, 0], drums: { k: 'x...x...x...x...', s: '......x.......x.', h: '..x...x...x...x.' }, lead: { wave: 'sine', pat: 'x.xx.x.xx.x.x...', oct: 36, vol: 0.06, len: 1.0, seed: 23 } }],
-  ['m-bossa', 'Café Bossa', 0, { bpm: 96, key: -2, bars: 24, prog: [[62, 65, 69, 72], [67, 71, 74, 77], [60, 64, 67, 71], [57, 61, 64, 67]], pad: 'sine', padCut: 1900, bass: 'triangle', bassPat: [1, 0, 1, 0], drums: D.bossa, swing: 0.15 }],
-  ['m-blues', 'Slow Blues', 0, { bpm: 72, key: -5, bars: 24, prog: [[60, 64, 67, 70], [65, 69, 72, 75], [60, 64, 67, 70], [67, 71, 74, 77]], pad: 'triangle', padCut: 1500, bass: 'triangle', bassPat: [1, 1, 1, 1], drums: D.shuffle, swing: 0.3, lead: { wave: 'sawtooth', pat: 'x..x....x.x.....', oct: 12, vol: 0.04, len: 2.5, seed: 31, from: 4 } }],
-  ['m-country', 'Dusty Trail', 0, { bpm: 110, key: 7, bars: 32, prog: [[60, 64, 67], [65, 69, 72], [60, 64, 67], [67, 71, 74]], pad: 'triangle', padCut: 2800, arp: 'triangle', arpStep: 2, bassPat: [1, 0, 1, 0], drums: D.train }],
-  ['m-orchestral', 'Grand Horizon', 0, { bpm: 84, key: 2, bars: 28, prog: [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]], pad: 'sawtooth', padCut: 1000, bass: 'sawtooth', bassPat: [1, 0, 0, 0], drums: { k: 'x.......x.......', s: '................', h: '................' }, drumsFrom: 8, lead: { wave: 'triangle', pat: 'x.......x...x...', oct: 24, vol: 0.07, len: 3, seed: 37, from: 4 } }],
-  ['m-mystery', 'Mystery Case', 0, { bpm: 90, key: -1, bars: 24, prog: [[57, 60, 64], [57, 60, 63], [53, 56, 60], [52, 56, 59]], pad: 'sine', padCut: 900, bass: 'triangle', bassPat: [1, 0, 1, 0], arp: 'sine', arpStep: 2, drums: { k: 'x.......x.......', s: '................', h: '..x...x...x...x.' } }],
-  ['m-shadows', 'Creeping Shadows', 0, { bpm: 60, key: -8, bars: 14, prog: [[57, 60, 63], [56, 59, 62], [57, 60, 63], [58, 61, 64]], pad: 'sawtooth', padCut: 500, bassPat: [1, 0, 0, 0], lead: { wave: 'sine', pat: 'x.......x.......', oct: 24, vol: 0.05, len: 6, seed: 41 } }],
-  ['m-arcade', 'Retro Arcade', 0, { bpm: 132, key: 2, bars: 40, prog: [[57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]], pad: 'square', padCut: 1400, padVol: 0.5, arp: 'square', arpStep: 1, bass: 'square', bassPat: [1, 0, 1, 1], drums: D.pop, lead: { wave: 'square', pat: 'x.x.xx.x.x.xx.x.', oct: 24, vol: 0.045, len: 1.2, seed: 43, from: 4 } }],
-  ['m-dnb', 'Liquid Rush', 0, { bpm: 172, key: -3, bars: 56, prog: [[57, 60, 64, 67], [53, 57, 60, 64], [60, 64, 67, 71], [55, 59, 62, 65]], pad: 'sawtooth', padCut: 1200, bass: 'sine', bassPat: [1, 0, 0, 1], drums: D.dnb, drumsFrom: 8 }],
-  ['m-soul', 'Sunday Soul', 0, { bpm: 80, key: -4, bars: 24, prog: [[60, 64, 67, 71], [65, 69, 72, 76], [62, 65, 69, 72], [67, 71, 74, 77]], pad: 'triangle', padCut: 1700, bass: 'triangle', bassPat: [1, 0, 1, 1], drums: D.lofi, swing: 0.2, lead: { wave: 'sine', pat: 'x..x..x.....x...', oct: 24, vol: 0.06, len: 2, seed: 47, from: 4 } }],
-  ['m-motivation', 'Morning Motivation', 0, { bpm: 124, key: 4, bars: 40, prog: [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]], pad: 'triangle', padCut: 2600, arp: 'triangle', arpStep: 2, bassPat: [1, 0, 1, 1], drums: D.house, drumsFrom: 4, lead: { wave: 'triangle', pat: 'x.x...x.x.x.....', oct: 24, vol: 0.05, seed: 53, from: 8 } }],
-  ['m-focus', 'Focus Study', 0, { bpm: 75, key: 0, bars: 24, prog: [[60, 64, 67, 71], [57, 60, 64, 67], [62, 65, 69, 72], [55, 59, 62, 65]], pad: 'sine', padCut: 1300, drums: D.lofi, bass: 'triangle', bassPat: [1, 0, 0, 1], swing: 0.12, lead: { wave: 'sine', pat: 'x.....x...x.....', oct: 24, vol: 0.05, len: 2.5, seed: 59 } }],
-  ['m-breath', 'Deep Breath', 0, { bpm: 50, key: 2, bars: 12, prog: [[60, 64, 67, 72], [57, 60, 64, 69], [65, 69, 72, 76], [60, 64, 67, 72]], pad: 'sine', padCut: 1400, bassPat: [1, 0, 0, 0], lead: { wave: 'sine', pat: 'x...............', oct: 36, vol: 0.05, len: 10, seed: 61 } }],
-  ['m-bells', 'Festive Bells', 0, { bpm: 120, key: 7, bars: 32, prog: [[60, 64, 67], [65, 69, 72], [67, 71, 74], [60, 64, 67]], pad: 'triangle', padCut: 2400, bassPat: [1, 0, 1, 0], drums: { k: 'x.......x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' }, drumsFrom: 4, lead: { wave: 'sine', pat: 'x.x.x...x.x.x...', oct: 36, vol: 0.08, len: 2, seed: 67 } }],
-  ['m-gameday', 'Game Day', 0, { bpm: 128, key: -2, bars: 40, prog: [[57, 60, 64], [57, 60, 64], [60, 64, 67], [55, 59, 62]], pad: 'sawtooth', padCut: 2200, bass: 'sawtooth', bassPat: [1, 1, 1, 1], drums: D.stomp, lead: { wave: 'sawtooth', pat: 'x..x..x.x.......', oct: 12, vol: 0.04, seed: 71, from: 8 } }],
-  ['m-runway', 'Runway', 0, { bpm: 124, key: -5, bars: 40, prog: [[57, 60, 64], [57, 60, 64], [55, 58, 62], [55, 58, 62]], pad: 'sawtooth', padCut: 700, padVol: 0.6, bass: 'sawtooth', bassPat: [0, 1, 0, 1], drums: D.minimal }],
-  ['m-bouncy', 'Bouncy Castle', 0, { bpm: 150, key: 5, bars: 40, prog: [[60, 64, 67], [67, 71, 74], [65, 69, 72], [67, 71, 74]], pad: 'triangle', padCut: 3200, bass: 'square', bassPat: [1, 0, 1, 0], drums: D.pop, lead: { wave: 'square', pat: 'x.x.x.x.xx.x....', oct: 24, vol: 0.045, len: 1.3, seed: 73 } }],
-  ['m-tender', 'Tender Moments', 0, { bpm: 68, key: 3, bars: 16, prog: [[60, 64, 67, 71], [57, 60, 64, 67], [65, 69, 72, 76], [67, 71, 74, 77]], pad: 'sine', padCut: 2000, arp: 'triangle', arpStep: 1, bassPat: [1, 0, 0, 0], lead: { wave: 'sine', pat: 'x.......x...x...', oct: 24, vol: 0.06, len: 4, seed: 79, from: 4 } }],
-  ['m-sunrise', 'City Sunrise', 0, { bpm: 92, key: 2, bars: 32, prog: [[60, 64, 67, 71], [55, 59, 62, 65], [57, 60, 64, 67], [53, 57, 60, 64]], pad: 'triangle', padCut: 2000, bass: 'sine', bassPat: [1, 0, 1, 1], drums: D.lofi, drumsFrom: 2, lead: { wave: 'triangle', pat: 'x..x..x...x.....', oct: 24, vol: 0.05, seed: 83, from: 4 } }],
-];
-
 export const AUDIO_LIBRARY = [
-  ...MUSIC.map(([id, name, dur, o]) => ({ id, name, cat: 'Music', dur: Math.round(((o.bars || 16) * (o.beats || 4) * 60) / o.bpm), gen: music(o) })),
+  ...SONGS.map(([id, name, o]) => ({ id, name, cat: 'Music', dur: Math.round(((o.bars || 16) * (o.beats || 4) * 60) / o.bpm), gen: song(o) })),
   ...SFX.map(([id, name, dur, gen]) => ({ id: `sfx-${id}`, name, cat: 'Sound Effects', dur, gen })),
 ];
 export const AUDIO_CATS = ['Music', 'Sound Effects'];
 
 // Path to the cached WAV for a library item, rendering it first if needed.
 export async function libraryAudioPath(item) {
-  const name = `lib-${item.id}-v1.wav`;
+  const name = `lib-${item.id}-${item.cat === 'Music' ? 'v2' : 'v1'}.wav`; // music v2: the 2026-11 music engine
   const p = await window.native.cachePath(name);
   if (await window.native.exists(p)) return p;
   const ctx = new OfflineAudioContext(2, Math.ceil(item.dur * SR) + SR / 2, SR);

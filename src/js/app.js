@@ -237,13 +237,11 @@ async function showStart() {
     startEl = h('div.start',
     h('div.start-side',
       h('div.start-logo', h('img', { src: 'img/logo.svg', alt: '' }), 'Current'),
-      h('div.start-tag', 'A video editor with screen and voiceover recording, automatic captions, and built-in titles, transitions, effects, filters, stickers, intros, outros and music.'),
-      h('div.hint', 'Aspect ratio'),
-      asp,
-      h('button.btn.primary.big', { onclick: () => { const ok = !store.dirty || !store.project.clips.length; if (!ok && !confirm('Discard the current project?')) return; loadProject(newProject({ aspect }), null); closeStart(); } }, icon('plus', 18), 'New Project'),
-      h('button.btn.big', { onclick: () => openProject() }, icon('folder', 18), 'Open Project'),
-      store.project.clips.length ? h('button.btn.ghost', { onclick: closeStart }, 'Back to current project') : null,
-      h('button.btn.ghost.start-news', { onclick: () => showWhatsNew() }, icon('news', 16), 'What’s new in 1.6'),
+      h('div.start-size', h('div.hint', 'Aspect ratio'), asp), // centred in the panel
+      h('div.start-actions', // anchored to the bottom
+        h('button.btn.primary.big', { onclick: () => { const ok = !store.dirty || !store.project.clips.length; if (!ok && !confirm('Discard the current project?')) return; loadProject(newProject({ aspect }), null); closeStart(); } }, icon('plus', 18), 'New Project'),
+        h('button.btn.big', { onclick: () => openProject() }, icon('folder', 18), 'Open Project'),
+        store.project.clips.length ? h('button.btn.ghost', { onclick: closeStart }, 'Back to current project') : null),
     ),
     h('div.start-main',
       h('h2', 'Recent projects'),

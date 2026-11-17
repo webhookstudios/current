@@ -45,6 +45,7 @@ export function initTimeline(el) {
   redoBtn = tb('redo', 'Redo (Ctrl+Shift+Z)', redo); redoBtn.dataset.tipOff = 'Nothing to redo';
   snapBtn = tb('magnet', 'Snapping (N): clips line up with each other and the playhead', () => { store.snap = !store.snap; snapBtn.classList.toggle('on', store.snap); }, '.on');
   zoomRange = h('input', { type: 'range', min: 0, max: 100, value: zoomToSlider(store.zoom), 'data-tip': 'Zoom the timeline', oninput: () => setZoom(sliderToZoom(+zoomRange.value)) });
+  paintZoom();
   capBtn = tb('cc', 'Captions: make them from the speech', () => (captionClips().length ? openCaptionEditor() : openCaptions()));
   const toolbar = h('div.tl-toolbar',
     undoBtn, redoBtn, h('div.sep'),
@@ -106,6 +107,7 @@ export function initTimeline(el) {
 // ---------- zoom ----------
 const sliderToZoom = (v) => 4 * Math.pow(400 / 4, v / 100);
 const zoomToSlider = (z) => (Math.log(z / 4) / Math.log(100)) * 100;
+const paintZoom = () => zoomRange.style.setProperty('--fill', `${zoomRange.value}%`); // the blue part ends at the thumb
 export function setZoom(z, anchorX) {
   const old = store.zoom;
   z = clamp(z, 4, 400);
@@ -113,6 +115,7 @@ export function setZoom(z, anchorX) {
   const tAt = (scroll.scrollLeft + ax) / old;
   store.zoom = z;
   zoomRange.value = zoomToSlider(z);
+  paintZoom();
   render();
   scroll.scrollLeft = tAt * z - ax;
 }
