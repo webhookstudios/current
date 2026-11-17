@@ -1,32 +1,34 @@
-# Current 1.6.0
+# Current 1.7.0
 
-Three new groups in the Sequences tab, 30 more music tracks, Favorites in every library tab, and a real countdown timer.
+Ask Claude to edit your video, or to build a first cut from your own clips. Also: a new music engine, a cleaner start screen and a more polished look.
 
-**News, Gaming and Travel sequences**
+**Assistant: edit with Claude**
 
-- **40 pieces in each group:** ten intros, each with a matching outro, and twenty mid-rolls. They are listed under their own headings (Intros, Mid-rolls, Outros), and **+** puts each one in the right place: intros at the start, mid-rolls at the playhead, outros at the end.
-- **News:** Newsroom Globe, Breaking Bulletin, Morning Show, Special Report, Live Desk, Weekly Roundup and more, with mid-rolls such as Breaking Banner (with a ticker), Top Stories, Weather Forecast, On the Scene, Fact Check, Interview, How It Happened, Traffic Update, Sports Results and Statement.
-- **Gaming:** Press Start, Neon Grid, Level Up, Glitch Mode, Versus, Let’s Play, Loading Screen, Starting Soon, Boss Warning and more, with mid-rolls such as Achievement Unlocked, Patch Notes, Tier List, Controls, Loadout, Player Card, Quest Log, Speedrun Splits, Chat Highlights and Respawning.
-- **Travel:** Passport Stamp, Boarding Pass, Postcard, Flight Path, Road Trip, Compass, Map Unfold, Polaroids and more, with mid-rolls such as Destination, Packing List, Day Plan, Local Phrase, Daily Budget, Getting There, Time Difference, Hidden Gem, Photo Spot and Our Rating.
-- **Pictures follow the words:** weather icons, transport icons, clock hands, rating stars, quest ticks and traffic colours all change to match what you type.
-
-**Education and Professional**
-
-- **No more charts that can’t match your numbers.** Ten Professional pieces built on charts are replaced by general ones: FAQ, Do’s and Don’ts, Action Items, Why Choose Us, Work Cycle, Visit Us, Special Offer, Our Promise, Team Shout-out and Short Break.
-- **Quick Poll is replaced by Exit Ticket**, and Big Statistic no longer draws dots.
-- **Activity Timer is a real countdown.** Type any time in its Timer length box (like 1:00, 5:00 or 10 min). The clip becomes that long and counts down in real time, then shows “Time’s up!” with a chime. Anything after it moves along.
-- Projects that already use a replaced piece still show it.
-
-**Favorites**
-
-- Hover over anything in Audio, Sequences, Titles, Transitions, Effects, Filters or Stickers and click its star. Each of those tabs keeps a **Favorites** group, and your stars are kept between sessions.
+- **Ask in plain words,** like "cut the long pauses and add the Boarding Pass intro" or "make it 30 seconds with upbeat music". Claude makes the changes in the open project while you watch, and Undo takes each request back in one step.
+- **A first cut from your media.** Add your videos, photos and sound to Project Media and press **Make a first cut…**. Say what the video is; length, mood and what to include are optional. Claude looks through every file and builds the video for you to tweak:
+  - it picks the best moments, puts them in order and trims them;
+  - it adds an intro and outro, titles, music, transitions and captions.
+- **Two ways to use it:**
+  - **The Assistant panel**, the speech bubble at the top right, with your own Claude API key. The key is kept encrypted with your system's keyring, and requests are billed to your Claude developer account. Each step shows as it happens, then what changed and roughly what it cost.
+  - **Claude's own apps, with your Claude plan.** Switch on Tools › Assistant › **Let Claude edit in Current**, then use Claude's desktop app (install the connector file it saves) or Claude Code (copy the one-line command). There is a ready-made **First cut** prompt.
+- **What Claude sees:** what you ask, the project outline (clip and file names, times, texts and captions), transcripts and the still frames it asks for. Your video and sound files stay on your computer. Shots, dark, blurry and shaky parts, quiet stretches and transcripts are all worked out here. Claude can't export, save or delete files. The README's Privacy section has the details.
 
 **Music**
 
-- **50 music tracks**, up from 20. The new ones include house, trap, reggae, waltz, a brass march, a lullaby, chiptune, drum and bass, bossa, blues, country, orchestral, mystery, soul, focus and meditation beds. The 30 sound effects are unchanged.
+- **A new music engine.** All 50 tracks were remade with real-sounding instruments (guitars, pianos, strings, brass, bells and more), proper drum kits, verses and choruses, and tunes of their own. Track names and lengths are unchanged, so existing projects keep working.
+
+**Look**
+
+- **A cleaner start screen.** The aspect ratio picker sits in the middle, with New Project and Open Project at the bottom. What's new moved to the Help menu.
+- **A more polished look:** softer buttons, rounder menus and dialogs, a grouped aspect ratio picker, rounded library tabs and thin scrollbars.
+
+**Fixes**
+
+- The timeline zoom slider's blue part now follows its handle.
+- The Export window no longer shows the word "null" when a project has no captions.
 
 Install:
 
 ```bash
-sudo apt install ./current_1.6.0_amd64.deb
+sudo apt install ./current_1.7.0_amd64.deb
 ```

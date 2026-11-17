@@ -16,7 +16,7 @@ import { loadBrand } from './brand.js';
 import { brandChip, brandMenu, openBrandKits } from './ui/brand.js';
 import { clipItems, toolsItems, selectedClip, inspect } from './ui/clipmenu.js';
 import { assistantPill } from './ui/assistant.js';
-import { initPanel, panelButton } from './ui/panel.js';
+import { initPanel, panelButton, openPanel } from './ui/panel.js';
 import { ONLINE, TRADEMARK } from './agent/privacy.js';
 import { initConnector } from './agent/connector.js';
 import { PROJECT_TEMPLATES } from './templates/projects.js';
@@ -127,7 +127,7 @@ function buildTopbar() {
     ]),
     menu('Brand', brandMenu),
     menu('Help', () => [
-      { label: 'What’s new in Current 1.6', icon: 'news', run: () => showWhatsNew() },
+      { label: 'What’s new in Current 1.7', icon: 'news', run: () => showWhatsNew() },
       { label: 'Keyboard shortcuts', icon: 'keyboard', kbd: '?', run: showShortcuts },
       { label: 'About Current', icon: 'info', run: showAbout },
     ]),
@@ -235,7 +235,7 @@ async function showStart() {
     const [w, hh] = ASPECTS[k];
     const s = 26 / Math.max(w, hh);
     return h('div.aspect', { class: `aspect${k === aspect ? ' on' : ''}`, 'data-a': k, onclick: () => { aspect = k; asp.querySelectorAll('.aspect').forEach((a) => a.classList.toggle('on', a.dataset.a === k)); } },
-      h('i', { style: { width: w * s + 'px', height: hh * s + 'px' } }), k, h('small', { style: { color: 'var(--fg3)', fontSize: '10px' } }, { '16:9': 'YouTube', '9:16': 'Shorts · Reels', '1:1': 'Square', '4:5': 'Instagram', '4:3': 'Classic', '21:9': 'Cinema' }[k]));
+      h('i', { style: { width: w * s + 'px', height: hh * s + 'px' } }), k, h('small', { style: { color: 'var(--fg3)', fontSize: '10px' } }, { '16:9': 'Widescreen', '9:16': 'Vertical', '1:1': 'Square', '4:5': 'Portrait', '4:3': 'Classic', '21:9': 'Cinema' }[k]));
   }));
   const recent = await window.native.recentList();
   const recentGrid = h('div.recent', recent.length ? recent.map((r) => h('div.recent-card', { onclick: () => openProject(r.path) },
@@ -333,16 +333,18 @@ function showShortcuts() {
     ...rows.flatMap(([k, d]) => [h('span', k.split(' / ').map((x, i) => [i ? ' / ' : '', h('kbd', x)])), h('span', d)])])) });
 }
 
-// What's new in 1.6 and 1.5, then every 1.4 feature: where to find each, and a button that opens it where that makes sense.
+// What's new in 1.7, 1.6 and 1.5, then every 1.4 feature: where to find each, and a button that opens it where that makes sense.
 function showWhatsNew() {
   const c = selectedClip();
   const sound = c && (c.type === 'audio' || c.type === 'video');
   const rows = [
+    ['chat', 'Assistant: edit with Claude', 'New in 1.7: ask Claude to edit this video, in the Assistant panel (the speech bubble at the top right) with your own Claude API key, or from Claude’s own apps through Tools › Assistant. Each request undoes in one step.', () => openPanel()],
+    ['wand', 'A first cut from your media', 'New in 1.7: add your clips to Project Media, then press Make a first cut in the Assistant panel. Claude picks the best moments, puts them in order and adds an intro, outro, music and captions.', () => openPanel()],
+    ['audio', 'A new music engine', 'New in 1.7: all 50 tracks were remade with real-sounding instruments, verses and choruses, and tunes of their own. Audio › Music.', () => setTab('audio', 'Music')],
+    ['aspect', 'A cleaner look', 'New in 1.7: a simpler start screen, softer buttons, rounder menus and dialogs, and thin scrollbars.', null],
     ['star', 'Favorites', 'New in 1.6: hover over anything in Audio, Sequences, Titles, Transitions, Effects, Filters or Stickers and click its star. Each of those tabs keeps a Favorites group.', () => setTab('pack', 'Favorites')],
     ['film', 'News, Gaming and Travel sequences', 'New in 1.6: 40 pieces in each, with intros, mid-rolls and outros under their own headings. The Sequences tab on the left.', () => setTab('pack', 'News')],
-    ['audio', '50 music tracks', 'New in 1.6: 30 new tracks, from house and drum and bass to waltz, bossa and lullabies. Audio › Music.', () => setTab('audio', 'Music')],
     ['midroll', 'Mid-rolls: Education and Professional', 'New in 1.5: 80 pieces for the middle of a video; + puts one in at the playhead. In 1.6 the chart pieces gave way to general ones, and Activity Timer counts down for real: type any time.', () => setTab('pack', 'Education')],
-    ['chart', 'Chart intros and outros', 'New in 1.5: Line Climb, Donut Fill, Big Number, Stacked Columns, Ranking Bars and Milestone Timeline, each with a matching outro. Their numbers are editable text. Sequences › Intros.', () => setTab('pack', 'Intros')],
     ['mic', 'Record a voiceover', 'Tools › Record voiceover, the microphone button above the timeline, or press R. Recording starts at the playhead after a short countdown.', openVoiceover],
     ['screen', 'Record your screen', 'Tools › Record screen, the screen button above the timeline, or Shift+R. Add a round webcam bubble and your microphone.', openScreenRecord],
     ['cc', 'Automatic captions', 'Tools › Generate captions, or the CC button above the timeline. Made on this computer; edit any line in Tools › Edit captions.', openCaptions],
@@ -354,7 +356,7 @@ function showWhatsNew() {
     ['shape', 'Shapes and outline', 'Clip › Shape and outline: show a video or photo as a rounded rectangle or a circle.', c && (c.type === 'video' || c.type === 'image') ? () => inspect('video', 'Shape') : null],
   ];
   const dlg = modal({
-    title: 'What’s new in Current 1.6',
+    title: 'What’s new in Current 1.7',
     body: h('div.news', rows.map(([ic, name, where, run]) => h('div.news-row',
       h('span.ic', icon(ic, 18)),
       h('div', h('b', name), h('div.where', where)),

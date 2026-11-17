@@ -10,7 +10,7 @@ A video editor built around ready-made templates. Drag animated titles, transiti
 
 | Library | Count | Examples |
 |---|---|---|
-| Starter templates | 12 | YouTube vlog, travel montage, travel highlights, product promo, tutorial, podcast clip (1:1), reel/short (9:16), birthday, family memories, gaming highlights, wedding, year in review |
+| Starter templates | 12 | vlog, travel montage, travel highlights, product promo, tutorial, podcast clip (1:1), vertical clip (9:16), birthday, family memories, gaming highlights, wedding, year in review |
 | Sequences | 280 | Ready-made pieces built from separate clips, so every text, number and piece can be edited and moved. **Intros** and **Outros** (40 each), including fifteen professional pairs where each intro has a matching outro: Block Reveal, Lesson Opener, Side Panel, Line Frame, Bold Bands, Chart Rise, Chapter Number, Monogram, Shutter, and six charts (Line Climb, Donut Fill, Big Number, Stacked Columns, Ranking Bars, Milestone Timeline). **Education** mid-rolls (40): Lesson Agenda and Recap, Key Term, Quick Quiz, True or False, Step by Step, Formula, Worked Example, Activity Timer (a real countdown for any length), Exit Ticket, Fill in the Blank, Myth vs Fact and more. **Professional** mid-rolls (40): Big Number, Before / After, Roadmap, Team Member, Customer Quote, Pricing Plans, FAQ, Do’s and Don’ts, Action Items, Why Choose Us, Visit Us, Special Offer, SWOT, Event Date and more, none with charts that would need real company numbers. **News**, **Gaming** and **Travel** (40 each): ten intros with matching outros and twenty mid-rolls in each, from Breaking Bulletin, Weather Forecast and Fact Check to Press Start, Patch Notes and Tier List, and Boarding Pass, Packing List and Local Phrase |
 | Titles | 105 | Openers, professional (with a matching lower third for each professional style), lower thirds, subtitles (incl. word highlight), social, callouts, quotes, countdowns, end credits |
 | Transitions | 85 | Dissolves, dips, wipes, slides, whip pans, zooms, spins, 3D cube/flip/page turn, glitch, film burn, light leak, shapes |
@@ -18,7 +18,7 @@ A video editor built around ready-made templates. Drag animated titles, transiti
 | Filters | 50 | Cinematic, film stocks, vintage, black & white, moods, food & travel |
 | Stickers | 100 | Animated emoji, 20 annotations (circles, highlighter, tooltips, star rating, spotlight…), 15 arrows (straight, double, block, elbow, U-turn, rotate, curved, neon, rainbow, sparkle trail…), confetti, frames |
 | Backgrounds | 78 | Solid colours (incl. green/blue screen), gradients, radial glows, animated, patterns, scenes and textures |
-| Audio | 80 | 50 music tracks and 30 sound effects, generated on first use |
+| Audio | 80 | 50 music tracks, each with its own instruments, song sections and tune, and 30 sound effects, all made on your computer the first time you use them |
 | Fonts | 22 | Bundled display and script fonts for titles |
 
 Every card animates when you hover over it, and the **+** button adds it at the playhead. Hover a music, sound or video card and press play to hear it first. Click the star on any card in Audio, Sequences, Titles, Transitions, Effects, Filters or Stickers to keep it in that tab’s **Favorites** group.
@@ -98,10 +98,10 @@ Current has only been tested on Ubuntu 26.04.
 
 ### With the deb package (recommended)
 
-Download `current_1.6.0_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
+Download `current_1.7.0_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
 
 ```bash
-sudo apt install ./current_1.6.0_amd64.deb
+sudo apt install ./current_1.7.0_amd64.deb
 ```
 
 Open **Current** from the apps menu. To remove it:
@@ -126,7 +126,7 @@ Or run it straight from the checkout with `npm start`.
 
 | To do this | Do this |
 |---|---|
-| Start a project | Pick an aspect ratio (16:9, 9:16 for Shorts and Reels, 1:1, 4:5, 4:3, 21:9) and click **New Project** |
+| Start a project | Pick an aspect ratio (16:9 widescreen, 9:16 vertical, 1:1 square, 4:5 portrait, 4:3 classic or 21:9 cinema) and click **New Project** |
 | Add media | Click **Import**, or drop files on the library or straight onto the timeline |
 | Add a template | Drag it to a track, or hover and click **+** |
 | Add a transition | Drop it on the cut between two clips (or on a clip's start or end to fade from or to black) |

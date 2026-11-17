@@ -6,7 +6,7 @@
 
 export const PROJECT_TEMPLATES = [
   {
-    id: 'vlog', name: 'YouTube Vlog', aspect: '16:9', music: 'm-acoustic', preview: 'intro-vlog',
+    id: 'vlog', name: 'Vlog', aspect: '16:9', music: 'm-acoustic', preview: 'intro-vlog',
     desc: 'Friendly intro, three scenes with captions, and an end screen with subscribe.',
     intro: 'intro-vlog', outro: 'outro-endscreen',
     scenes: [['Your opening shot', 6, 'bg-g-sunset', 'whip-pan', ['lt-pill', ['Your Name', 'Vlog · Day 1']]], ['Main moment', 8, 'bg-g-ocean', 'whip-pan', ['sub-box', ['Add a caption here']]], ['Wrap up', 6, 'bg-g-peach', 'dissolve', null]],
@@ -36,7 +36,7 @@ export const PROJECT_TEMPLATES = [
     scenes: [['Speaker camera', 12, 'bg-r-studio-grey', 'dissolve', ['sub-karaoke', ['Every word lights up as it is spoken']]]],
   },
   {
-    id: 'reel', name: 'Reel / Short', aspect: '9:16', music: 'm-funk', preview: 'intro-comic',
+    id: 'reel', name: 'Vertical Clip', aspect: '9:16', music: 'm-funk', preview: 'intro-comic',
     desc: 'Vertical, fast-paced: bold hook text, quick cuts and a follow prompt.',
     intro: 'intro-comic', outro: 'outro-swipe',
     scenes: [['Hook shot', 3, 'bg-g-cotton-candy', 'punch', ['sub-creator', ['WAIT FOR IT...']]], ['Clip 2', 3, 'bg-g-lavender', 'glitch', null], ['Clip 3', 3, 'bg-g-citrus', 'whip-vertical', ['sub-creator', ['NO WAY!']]], ['Payoff', 3, 'bg-g-lime-punch', 'zoom-out', null]],

@@ -14,7 +14,7 @@ Written 2026-11-17, against Current 1.6.0 plus commit `dd20615`.
 ## What people get
 
 **A first cut from their own media.**
-- The person adds their footage, photos and audio to the project, then says what they're making ("a 60-second travel recap for Shorts, upbeat").
+- The person adds their footage, photos and audio to the project, then says what they're making ("a 60-second vertical travel recap, upbeat").
 - Claude looks through every file and builds the video: it picks the best moments, puts them in order, trims them, and adds an intro and outro, titles, music, transitions and captions.
 - The person gets at least a solid starting point, and often a finished video that only needs tweaks (part 4).
 
