@@ -1,5 +1,6 @@
 // Preview panel: rendered output, transport controls, and on-canvas move/scale/rotate handles.
-import { h, icon, fmtTime, clamp } from '../util.js';
+import { h, icon, fmtTime, clamp, IS_MAC } from '../util.js';
+import { segmentedFor } from './widgets.js';
 import { store, selectedClips, projectDuration, checkpoint, changed, mediaById } from '../state.js';
 import { app } from '../actions.js';
 import { images } from '../engine/media.js';
@@ -36,7 +37,7 @@ export function initPreview(el, compositorCanvas) {
     h('button.ibtn.tip-up', { 'data-tip': 'Stop', onclick: () => { app.player.pause(); app.player.seek(0); } }, icon('stop', 16)),
     h('div.sp'),
     h('div.meter', { title: 'Audio level' }, meterL),
-    qualitySel,
+    IS_MAC ? segmentedFor(qualitySel, 'Preview quality') : qualitySel,
     h('button.ibtn.tip-up', { 'data-tip': 'Snapshot (save frame as PNG)', onclick: snapshot }, icon('camera', 17)),
     h('button.ibtn.tip-up', { 'data-tip': 'Full screen', onclick: () => stage.requestFullscreen?.() }, icon('fullscreen', 17)));
   el.append(stage, bar);

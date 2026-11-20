@@ -29,7 +29,7 @@ rm -f "$LIB/resources/default_app.asar"
 mv "$LIB/electron" "$LIB/current"
 chmod 4755 "$LIB/chrome-sandbox"
 
-cp "$ROOT/package.json" "$ROOT/main.js" "$ROOT/preload.js" "$ROOT/assistant.js" "$APP/"
+cp "$ROOT/package.json" "$ROOT/main.js" "$ROOT/encoder.js" "$ROOT/preload.js" "$ROOT/assistant.js" "$APP/"
 cp -r "$ROOT/src" "$APP/src"
 cp -r "$ROOT/mcp" "$APP/mcp"
 # Runtime packages: Anthropic's SDK for the Assistant panel and what it needs (not Electron, a dev tool here).

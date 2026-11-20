@@ -1,7 +1,7 @@
 // Contact sheets of the professional intros and outros: each row is one pack at eight moments,
 // from the first motion to the last frame. Writes tests/out/pro-16x9.b64 and pro-9x16.b64 (PNG).
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 const { PACKS } = await import(base + 'templates/packs.js');
 const { drawTemplateTo } = await import(base + 'engine/renderer.js');

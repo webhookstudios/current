@@ -1,7 +1,7 @@
 // Plays for 2 s and checks the clock, element sync, and a save/load round trip.
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
-const M = new URL('./media/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
+const M = decodeURIComponent(new URL('./media/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 let bad = 0;
 try {

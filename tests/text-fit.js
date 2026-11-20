@@ -4,7 +4,7 @@
 //   npx electron . --selftest=tests/text-fit.js
 // Each title is also tried with longer words, since every text can be edited.
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 const { TITLES } = await import(base + 'templates/titles.js');
 const { ELEMENTS } = await import(base + 'templates/elements.js');

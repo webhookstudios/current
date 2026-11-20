@@ -1,7 +1,7 @@
 // The professional intros in the editor: they are listed first, every shape is its own piece,
 // and dragging one piece moves only that piece.
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = (n) => window.native.selftestCapture(OUT + n + '.png');

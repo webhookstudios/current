@@ -14,7 +14,7 @@ rm -rf "$DEST/runtime" "$DEST/app"
 cp -a "$ROOT/node_modules/electron/dist" "$DEST/runtime"
 rm -f "$DEST/runtime/resources/default_app.asar"
 mkdir -p "$DEST/runtime/resources/app/data"
-cp "$ROOT/package.json" "$ROOT/main.js" "$ROOT/preload.js" "$ROOT/assistant.js" "$DEST/runtime/resources/app/"
+cp "$ROOT/package.json" "$ROOT/main.js" "$ROOT/encoder.js" "$ROOT/preload.js" "$ROOT/assistant.js" "$DEST/runtime/resources/app/"
 cp -r "$ROOT/src" "$DEST/runtime/resources/app/src"
 cp -r "$ROOT/mcp" "$DEST/runtime/resources/app/mcp"
 (cd "$ROOT" && npm ls --omit=dev --parseable --all 2>/dev/null) | tail -n +2 | while read -r dir; do

@@ -6,6 +6,7 @@ import { h, icon, clamp, fmtTime } from '../util.js';
 import { store, edit, makeClip, addClip, freeTrack, select } from '../state.js';
 import { app, importPaths } from '../actions.js';
 import { modal, slider, toggle, toast } from './widgets.js';
+import { allowMedia } from './macmedia.js';
 
 const PREFS_KEY = 'current.voiceover';
 function loadPrefs() {
@@ -24,6 +25,8 @@ class Mic {
     this.close();
     const audio = { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
     if (deviceId) audio.deviceId = { exact: deviceId };
+    // macOS: the system asks first; once refused, say how to turn it on (micError explains the rest)
+    if (!(await allowMedia('microphone'))) throw Object.assign(new Error('Microphone access is off'), { name: 'NotAllowedError' });
     this.stream = await navigator.mediaDevices.getUserMedia({ audio });
     this.ctx = new AudioContext({ latencyHint: 'interactive' });
     this.src = this.ctx.createMediaStreamSource(this.stream);

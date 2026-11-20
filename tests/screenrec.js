@@ -2,7 +2,7 @@
 // dialog; run with simulated camera and microphone:
 //   CURRENT_RECORDING_DIR=tests/out/recordings npx electron . --selftest=tests/screenrec.js --use-fake-device-for-media-stream
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = (n) => window.native.selftestCapture(OUT + n + '.png');
@@ -56,7 +56,7 @@ try {
     check(!!ac && st.trackById(ac.trackId).kind === 'audio' && Math.abs(ac.start - sc.start) < 0.01, 'the microphone is its own clip on an audio track, starting with the screen');
     check(ac && Math.abs(ac.duration - sc.duration) < 0.6 && D.roleOf(ac) === 'voice' && st.mediaById(ac.mediaId).path.endsWith('.wav'), `narration ${ac?.duration.toFixed(2)} s, a WAV file, marked as Voice`);
     check(sc.muted, 'the screen clip itself is silent');
-    check(sm.path.includes('/recordings/Screen recording ') && sm.path.endsWith('.webm'), `saved as ${sm.path.split('/').slice(-2).join('/')}`);
+    check(sm.path.includes('/recordings/Screen recording ') && /\.(webm|mp4)$/.test(sm.path) /* H.264 MP4 on macOS */, `saved as ${sm.path.split('/').slice(-2).join('/')}`);
     const vt = st.videoTracks();
     check(vt.indexOf(st.trackById(cc.trackId)) < vt.indexOf(st.trackById(sc.trackId)), 'the webcam is on a track above the screen');
     check(cc.shape === 'circle' && cc.border?.width > 0 && cc.muted && cc.transform.scale < 0.4 && cc.transform.x > 0.2 && cc.transform.y > 0.2, 'the webcam is a round, outlined bubble in the bottom-right corner');

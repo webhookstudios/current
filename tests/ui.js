@@ -1,7 +1,7 @@
 // UI walkthrough: start screen, new project, import, build a timeline, open panels, capture screenshots.
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
-const M = new URL('./media/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
+const M = decodeURIComponent(new URL('./media/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = (n) => window.native.selftestCapture(OUT + n + '.png');
