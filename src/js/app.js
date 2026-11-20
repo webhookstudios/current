@@ -24,6 +24,7 @@ import { packById } from './templates/packs.js';
 import { drawPreview, makeThumbCanvas } from './ui/previews.js';
 import { showMenu, closeMenu, modal, toast, initTips, setNativeMenus, menuData } from './ui/widgets.js';
 import { initMacMedia } from './ui/macmedia.js';
+import { applyTheme, currentTheme, openSettings } from './themes.js';
 import {
   app, buildFromTemplate, splitAtPlayhead, deleteSelected, duplicateSelected, copySelected, cutSelected, paste, selectAll, freezeFrame, detachAudio, nudgeSelection,
 } from './actions.js';
@@ -34,6 +35,7 @@ let nameInput, dirtyDot;
 
 async function boot() {
   document.documentElement.classList.toggle('mac', IS_MAC); // macOS look: see html.mac in app.css
+  if (IS_MAC) applyTheme(currentTheme()); // the colour theme chosen in Settings (Pine by default)
   if (IS_MAC) { // fonts Ubuntu has installed, bundled for macOS
     const css = h('link', { rel: 'stylesheet', href: 'css/mac-fonts.css' });
     await new Promise((r) => { css.onload = css.onerror = r; document.head.append(css); });
@@ -174,6 +176,7 @@ async function initMacMenus() {
   window.native.onMenuRun((id) => macRuns[id]?.());
   // Edit menu: in a text box it edits the text; anywhere else it acts on clips.
   window.native.onMenuEdit((op, id) => { if (editingText()) window.native.editText(op); else macRuns[id]?.(); });
+  window.native.onMenuSettings(openSettings);
   for (const ev of ['change', 'selection', 'media', 'brand']) store.on(ev, syncMacMenus);
   window.addEventListener('focus', syncMacMenus);
   syncMacMenus();
@@ -449,7 +452,7 @@ function initShortcuts() {
       case k === 'R' && e.shiftKey && !ctrl && !e.altKey: openScreenRecord(); break;
       case k === 'r' && !ctrl && !e.altKey: openVoiceover(); break;
       case k === 'n' || k === 'N': store.snap = !store.snap; document.querySelector('[data-tip^="Snapping"]')?.classList.toggle('on', store.snap); toast(`Snapping ${store.snap ? 'on' : 'off'}`); break;
-      case k === ',': nudgeSelection(-1 / fps); break;
+      case k === ',' && !(IS_MAC && ctrl): nudgeSelection(-1 / fps); break; // ⌘, opens Settings on a Mac
       case k === '.': nudgeSelection(1 / fps); break;
       case k === '?': showShortcuts(); break;
       case k === 'Escape': closeMenu(); select([]); break;

@@ -6,9 +6,9 @@
 html.mac {
   --font: -apple-system, BlinkMacSystemFont, system-ui, 'Public Sans', sans-serif;
   --radius: 10px;
-  --glass: rgba(23, 32, 28, 0.72);      /* --chrome over the window's frosted glass */
+  --glass: color-mix(in srgb, var(--chrome) 72%, transparent); /* the theme's chrome over the window's frosted glass */
   --glass-line: rgba(255, 255, 255, 0.07);
-  --focus: rgba(79, 179, 165, 0.55);    /* --accent as a focus ring */
+  --focus: color-mix(in srgb, var(--accent) 55%, transparent);    /* --accent as a focus ring */
   -webkit-font-smoothing: antialiased;
 }
 
@@ -22,7 +22,7 @@ html.mac .lib-body { background: var(--bg1); }
 html.mac .workspace > .splitter, html.mac .hsplit { background: var(--bg0); }
 html.mac .lib-tabs { background: var(--glass); border-right-color: var(--glass-line); }
 html.mac .lib-tab { border-left: 0; margin: 0 6px; padding: 7px 2px; border-radius: 8px; }
-html.mac .lib-tab.active { background: rgba(79, 179, 165, 0.16); color: var(--accent); }
+html.mac .lib-tab.active { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
 html.mac .lib-tab:hover:not(.active) { background: rgba(255, 255, 255, 0.06); }
 
 /* ---------- top bar: window buttons on the left, title in the middle ---------- */
@@ -39,8 +39,8 @@ html.mac .top-right .btn { height: 28px; }
 html.mac .btn { height: 28px; border-radius: 7px; border-color: rgba(255, 255, 255, 0.09); background: rgba(255, 255, 255, 0.07); box-shadow: 0 0.5px 0 rgba(255, 255, 255, 0.08) inset, 0 1px 1.5px rgba(0, 0, 0, 0.35); }
 html.mac .btn:hover { background: rgba(255, 255, 255, 0.11); }
 html.mac .btn:active { background: rgba(255, 255, 255, 0.15); }
-html.mac .btn.primary { background: linear-gradient(to bottom, #5cc0b2, var(--accent)); border-color: transparent; box-shadow: 0 0.5px 0 rgba(255, 255, 255, 0.25) inset, 0 1px 2px rgba(0, 0, 0, 0.35); }
-html.mac .btn.primary:hover { background: linear-gradient(to bottom, #6fcabd, #5cc0b2); }
+html.mac .btn.primary { background: linear-gradient(to bottom, var(--accent-hi), var(--accent)); border-color: transparent; box-shadow: 0 0.5px 0 rgba(255, 255, 255, 0.25) inset, 0 1px 2px rgba(0, 0, 0, 0.35); }
+html.mac .btn.primary:hover { background: linear-gradient(to bottom, var(--accent-hover), var(--accent-hi)); }
 html.mac .btn.big { height: 36px; border-radius: 9px; }
 html.mac .ibtn { border-radius: 7px; }
 html.mac input[type=text], html.mac input[type=number], html.mac select, html.mac textarea { border-radius: 7px; border-color: rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.22); }
@@ -59,7 +59,7 @@ html.mac .seg-btn.on { background: rgba(255, 255, 255, 0.14); color: var(--fg); 
 html.mac .aspects { gap: 4px; padding: 4px; border-radius: 12px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.06); }
 html.mac .aspect { border: 0; border-radius: 9px; background: transparent; }
 html.mac .aspect:hover { background: rgba(255, 255, 255, 0.05); }
-html.mac .aspect.on { background: rgba(79, 179, 165, 0.18); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+html.mac .aspect.on { background: color-mix(in srgb, var(--accent) 18%, transparent); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
 
 /* ---------- start screen ---------- */
 html.mac .start::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 40px; -webkit-app-region: drag; z-index: 1; } /* drag the window from the top edge */
@@ -90,3 +90,18 @@ html.mac .sr-pick { display: flex; flex-direction: column; gap: 6px; padding: 6p
 html.mac .sr-pick:hover { border-color: var(--accent); color: var(--fg); }
 html.mac .sr-pick img { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; background: #000; border-radius: 6px; }
 html.mac .sr-pick span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; }
+
+/* Settings › Color theme */
+html.mac .theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+html.mac .theme-card { display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 12px; border: 1.5px solid var(--line2); background: var(--bg1); color: var(--fg); text-align: left; cursor: pointer; }
+html.mac .theme-card:hover { border-color: var(--fg3); }
+html.mac .theme-card.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
+html.mac .theme-card b { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-top: 4px; }
+html.mac .theme-card small { color: var(--fg3); font-size: 11.5px; line-height: 1.35; }
+html.mac .theme-default { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 6px; background: var(--bg3); color: var(--fg2); }
+html.mac .theme-swatch { position: relative; height: 64px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); }
+html.mac .theme-swatch i { position: absolute; display: block; }
+html.mac .ts-bar { left: 0; right: 0; top: 0; height: 14px; }
+html.mac .ts-panel { left: 8px; top: 22px; width: 46%; bottom: 8px; border-radius: 4px; }
+html.mac .ts-dot { left: 14px; top: 28px; width: 10px; height: 10px; border-radius: 50%; }
+html.mac .ts-btn { right: 8px; bottom: 8px; width: 28%; height: 12px; border-radius: 4px; }

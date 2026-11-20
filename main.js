@@ -479,6 +479,7 @@ function setAppMenu(menus) {
   const tpl = [
     { label: app.name, submenu: [
       about ? { label: about.label, click: () => pick(about.id) } : { role: 'about' },
+      { type: 'separator' }, { label: 'Settings…', accelerator: 'CmdOrCtrl+,', click: () => win?.webContents.send('menu:settings') },
       { type: 'separator' }, { role: 'services' }, { type: 'separator' },
       { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }] },
     ...page.filter((m) => m !== help).map((m) => ({ label: m.label, submenu: menuItems(m.items, pick) })),
