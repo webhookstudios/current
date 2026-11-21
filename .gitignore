@@ -2,3 +2,5 @@ node_modules/
 dist/
 tests/media/
 tests/out/
+vendor/mac/
+.tools/

@@ -13,7 +13,7 @@ try {
   const L = await import(base + 'ui/library.js');
   const { TIMER } = await import(base + 'templates/scenekit.js');
   const S = st.store;
-  const M = new URL('./media/', import.meta.url).pathname;
+  const M = decodeURIComponent(new URL('./media/', import.meta.url).pathname);
 
   // 1. headings in each section
   for (const sec of ['News', 'Gaming', 'Travel']) {

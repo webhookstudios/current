@@ -1,13 +1,14 @@
 // Record the screen with an optional webcam bubble and microphone. The desktop's own share dialog
-// picks the screen or window. The recording lands at the playhead: the screen on a video track,
+// picks the screen or window (on a Mac: the system picker, or Current's own on macOS 14 and older). The recording lands at the playhead: the screen on a video track,
 // the webcam above it as a round bubble in the bottom-right corner, and the microphone on an audio
 // track below (recorded straight to WAV, like voiceovers, so its timing is exact).
-import { h, icon, clamp } from '../util.js';
+import { h, icon, clamp, IS_MAC } from '../util.js';
 import { store, edit, mainTrack, trackClips, videoTracks, ensureTrack, select, trackById, makeClip, addClip } from '../state.js';
 import { app, importPaths } from '../actions.js';
 import { modal, slider, toggle, toast } from './widgets.js';
 import { assemble, toWav } from './voiceover.js';
 import { freeTrack } from '../state.js';
+import { allowMedia, screenAllowed } from './macmedia.js';
 
 const PREFS = 'current.screenrec';
 // cam and mic: unset = the first device, '' = none
@@ -36,12 +37,14 @@ export async function openScreenRecord() {
     stopCam();
     camView.classList.toggle('off', !camSel.value);
     if (!camSel.value) return;
+    if (!(await allowMedia('camera'))) { camSel.value = ''; camView.classList.add('off'); return; }
     try { camStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: camSel.value }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } }); camView.srcObject = camStream; }
     catch (e) { toast(`That camera could not be opened: ${e.message}`, 'err'); camSel.value = ''; camView.classList.add('off'); }
   }
   async function openMic() {
     stopMic();
     if (!micSel.value) return;
+    if (!(await allowMedia('microphone'))) { micSel.value = ''; return; }
     try {
       micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: micSel.value }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
       micCtx = new AudioContext(); an = micCtx.createAnalyser(); an.fftSize = 1024;
@@ -57,7 +60,8 @@ export async function openScreenRecord() {
     raf = requestAnimationFrame(meter);
   };
 
-  // device lists (labels need permission, so ask once for each kind)
+  // device lists (labels need permission, so ask once for each kind; on a Mac the system asks first)
+  await allowMedia('microphone', { quiet: true }); await allowMedia('camera', { quiet: true });
   try { (await navigator.mediaDevices.getUserMedia({ audio: true, video: true }))?.getTracks().forEach((t) => t.stop()); } catch { /* listed without names */ }
   const devs = await navigator.mediaDevices.enumerateDevices();
   const fill = (sel, kind, saved, noun) => {
@@ -86,6 +90,7 @@ export async function openScreenRecord() {
         Object.assign(prefs, { countdown, hide, cam: camSel.value, mic: micSel.value });
         savePrefs(prefs);
         let screen;
+        if (!window.__currentTestScreen && !(await screenAllowed())) return;
         try { screen = await getScreen(); } catch (e) { toast('No screen was chosen, so nothing was recorded.', 'err'); return; }
         starting = true;
         c();
@@ -163,7 +168,9 @@ async function record({ screen, cam, mic, micCtx, micSrc, an, countdown, hide, p
     panel.classList.add('live');
     label.textContent = 'Recording';
     action.className = 'btn small stop'; action.replaceChildren(icon('stop', 13), 'Stop recording'); action.onclick = stop;
-    const type = (v) => [`video/webm;codecs=${v}`, 'video/webm'].find((m) => MediaRecorder.isTypeSupported(m));
+    // macOS records H.264 with the Mac's hardware encoder: software VP8 cannot keep up there and drops
+    // the end of the recording. Linux keeps VP8 in WebM.
+    const type = (v) => [...(IS_MAC ? ['video/mp4;codecs=avc1'] : []), `video/webm;codecs=${v}`, 'video/webm'].find((m) => MediaRecorder.isTypeSupported(m));
     recs = [{ kind: 'screen', rec: new MediaRecorder(new MediaStream(screen.getVideoTracks()), { mimeType: type('vp8'), videoBitsPerSecond: 8e6 }) }];
     if (cam) recs.push({ kind: 'cam', rec: new MediaRecorder(cam, { mimeType: type('vp8'), videoBitsPerSecond: 3e6 }) });
     for (const r of recs) { r.chunks = []; r.rec.ondataavailable = (e) => { if (e.data.size) r.chunks.push(e.data); }; r.done = new Promise((res) => { r.rec.onstop = res; }); }
@@ -195,8 +202,8 @@ async function record({ screen, cam, mic, micCtx, micSrc, an, countdown, hide, p
       const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
       const paths = {};
       for (const r of recs) {
-        const blob = new Blob(r.chunks, { type: 'video/webm' });
-        paths[r.kind] = await window.native.saveRecording(await blob.arrayBuffer(), `${r.kind === 'cam' ? 'Webcam' : 'Screen recording'} ${stamp}`);
+        const blob = new Blob(r.chunks, { type: IS_MAC ? r.rec.mimeType : 'video/webm' });
+        paths[r.kind] = await window.native.saveRecording(await blob.arrayBuffer(), `${r.kind === 'cam' ? 'Webcam' : 'Screen recording'} ${stamp}`, r.rec.mimeType.startsWith('video/mp4') ? 'mp4' : 'webm');
       }
       if (voice?.samples.length > voice.sr * 0.3) paths.voice = await window.native.saveRecording(toWav(voice.samples, voice.sr), `Screen recording sound ${stamp}`, 'wav');
       await placeRecording(paths, start);

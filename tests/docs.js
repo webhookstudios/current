@@ -1,7 +1,7 @@
 // Builds a good-looking project and captures README screenshots.
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('../docs/screenshots/', import.meta.url).pathname;
-const M = new URL('./media/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('../docs/screenshots/', import.meta.url).pathname);
+const M = decodeURIComponent(new URL('./media/', import.meta.url).pathname);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 try {
   document.querySelector('.start button.primary')?.click();

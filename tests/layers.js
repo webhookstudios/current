@@ -1,7 +1,7 @@
 // Visual check: chroma key over a photo, picture-in-picture, a transition mid-way, and a title.
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
-const M = new URL('./media/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
+const M = decodeURIComponent(new URL('./media/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 try {
   document.querySelector('.start button.primary')?.click();

@@ -1,7 +1,7 @@
 // Auto-ducking and Remove pauses, with generated sound: a "voice" (1 kHz bursts with gaps) and
 // "music" (a steady 220 Hz tone). The exported mix is measured at each frequency.
 const base = new URL('../src/js/', import.meta.url).href;
-const OUT = new URL('./out/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
 const log = (...a) => console.log('[test]', ...a);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = (n) => window.native.selftestCapture(OUT + n + '.png');

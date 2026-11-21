@@ -1,7 +1,7 @@
 // Smoke test: compiles every shader, draws every template, builds a timeline and exports it.
 const base = new URL('../src/js/', import.meta.url).href;
 const log = (...a) => console.log('[test]', ...a);
-const M = new URL('./media/', import.meta.url).pathname;
+const M = decodeURIComponent(new URL('./media/', import.meta.url).pathname);
 let fails = 0;
 try {
   const { TRANSITIONS, TRANSITION_HEADER } = await import(base + 'templates/transitions.js');

@@ -1,5 +1,5 @@
 // Screenshots: start-screen template cards and the Arrows sticker category.
-const OUT = new URL('./out/', import.meta.url).pathname;
+const OUT = decodeURIComponent(new URL('./out/', import.meta.url).pathname);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 await wait(1200);
 const main = document.querySelector('.start-main');
