@@ -98,10 +98,10 @@ Current has only been tested on Ubuntu 26.04.
 
 ### With the deb package (recommended)
 
-Download `current_1.7.0_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
+Download `current_1.7.1_amd64.deb` from the [latest release](https://github.com/webhookstudios/current/releases/latest), then install it:
 
 ```bash
-sudo apt install ./current_1.7.0_amd64.deb
+sudo apt install ./current_1.7.1_amd64.deb
 ```
 
 Open **Current** from the apps menu. To remove it:
